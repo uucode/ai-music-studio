@@ -559,11 +559,11 @@ export default function Home() {
       {/* Donation Modal */}
       {showDonate && (
         <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto"
           onClick={() => setShowDonate(false)}
         >
           <div 
-            className="bg-white rounded-2xl p-6 max-w-lg"
+            className="bg-white rounded-2xl p-6 max-w-lg my-8"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-center text-gray-700 font-bold mb-3">
