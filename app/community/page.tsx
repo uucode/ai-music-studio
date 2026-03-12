@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 
@@ -17,6 +18,29 @@ export default function Community() {
   const [shares, setShares] = useState<MusicShare[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showDonate, setShowDonate] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Handle share link from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const shareData = searchParams.get('share');
+      if (shareData) {
+        try {
+          const song = JSON.parse(decodeURIComponent(shareData));
+          const currentShares = JSON.parse(localStorage.getItem('musicShares') || '[]');
+          const exists = currentShares.some((s: any) => s.title === song.title && s.lyrics === song.lyrics);
+          if (!exists) {
+            currentShares.unshift(song);
+            localStorage.setItem('musicShares', JSON.stringify(currentShares));
+            setShares(currentShares);
+            alert('收到一首分享的歌曲！');
+          }
+        } catch (e) {
+          console.error('Invalid share link', e);
+        }
+      }
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const loaded = JSON.parse(localStorage.getItem('musicShares') || '[]');
@@ -87,8 +111,20 @@ export default function Community() {
                   )}
 
                   {/* Hint */}
-                  <div className="mt-2 ml-4 text-white/30 text-xs">
-                    {expandedId === index ? '▲ 点击收起' : '▼ 点击查看歌词'}
+                  <div className="mt-2 ml-4 flex items-center justify-between">
+                    <span className="text-white/30 text-xs">
+                      {expandedId === index ? '▲ 点击收起' : '▼ 点击查看歌词'}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const shareLink = `${window.location.origin}/?share=${encodeURIComponent(JSON.stringify(share))}`;
+                        navigator.clipboard.writeText(shareLink);
+                        alert('分享链接已复制！');
+                      }}
+                      className="text-white/30 text-xs hover:text-pink-300"
+                    >
+                      📤 分享
+                    </button>
                   </div>
                 </div>
 

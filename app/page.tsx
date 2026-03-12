@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 
 type MusicStyle = 'R&B' | '流行' | '抒情' | '电子' | '民谣' | '国风' | '爵士' | '说唱' | '摇滚' | '治愈';
@@ -52,8 +53,29 @@ export default function Home() {
   const [nickname, setNickname] = useState('');
   const [showShare, setShowShare] = useState(false);
   const [hasShared, setHasShared] = useState(false);
-  
   const [showDonate, setShowDonate] = useState(false);
+  const searchParams = useSearchParams();
+  
+  // Handle share link from URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const shareData = searchParams.get('share');
+      if (shareData) {
+        try {
+          const song = JSON.parse(decodeURIComponent(shareData));
+          const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
+          const exists = shares.some((s: any) => s.title === song.title && s.lyrics === song.lyrics);
+          if (!exists) {
+            shares.unshift(song);
+            localStorage.setItem('musicShares', JSON.stringify(shares));
+            alert('收到一首分享的歌曲！');
+          }
+        } catch (e) {
+          console.error('Invalid share link', e);
+        }
+      }
+    }
+  }, [searchParams]);
   
   // Output
   const [lyrics, setLyrics] = useState('');
@@ -488,10 +510,15 @@ export default function Home() {
                           const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
                           shares.unshift(shareData);
                           localStorage.setItem('musicShares', JSON.stringify(shares));
+                          
+                          // Generate share link
+                          const shareLink = `${window.location.origin}/?share=${encodeURIComponent(JSON.stringify(shareData))}`;
+                          await navigator.clipboard.writeText(shareLink);
+                          
                           setShowShare(false);
                           setNickname('');
                           setHasShared(true);
-                          alert('已分享到社区！');
+                          alert('已分享到社区！链接已复制到剪贴板，快分享给朋友吧！');
                         }}
                         className="inline-block px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition"
                       >
