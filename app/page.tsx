@@ -581,6 +581,9 @@ export default function Home() {
                   className="w-1/2 rounded-lg"
                 />
               </div>
+              <p className="text-center text-gray-500 text-xs mt-2">
+                长按二维码图片即可保存
+              </p>
             <p className="text-center text-gray-600 text-sm mt-3">
               感谢支持！☕
             </p>
