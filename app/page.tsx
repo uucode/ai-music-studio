@@ -68,6 +68,20 @@ export default function Home() {
     setGeneratingStage('lyrics');
     setError('');
     
+    // Set timeout - 3 minutes max
+    let timeout: NodeJS.Timeout;
+    
+    const runWithTimeout = () => {
+      timeout = setTimeout(() => {
+        if (generating) {
+          setError('生成时间较长，请检查网络后重试');
+          setGenerating(false);
+        }
+      }, 180000);
+    };
+    
+    runWithTimeout();
+    
     try {
       // Stage 1: Generate lyrics
       setGeneratingStage('lyrics');
@@ -82,7 +96,16 @@ export default function Home() {
           mbti
         })
       });
+      
+      if (!res.ok) {
+        throw new Error('歌词生成失败，请重试');
+      }
+      
       const data = await res.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
       
       if (data.lyrics) {
         setLyrics(data.lyrics);
@@ -114,19 +137,31 @@ export default function Home() {
             title: mbti || mood || keyword || '随心之作'
           })
         });
+        
+        if (!musicRes.ok) {
+          throw new Error('歌曲生成失败，请重试');
+        }
+        
         const musicData = await musicRes.json();
+        
+        if (musicData.error) {
+          throw new Error(musicData.error);
+        }
         
         if (musicData.audioUrl) {
           setAudioUrl(musicData.audioUrl);
           setGeneratingStage('done');
           setStep('result');
+        } else {
+          throw new Error('获取音频失败');
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('生成失败，请重试');
+      setError(err.message || '生成失败，请检查网络后重试');
       setStep('input');
     } finally {
+      clearTimeout(timeout);
       setGenerating(false);
     }
   };
