@@ -186,16 +186,16 @@ export default function Community() {
               <p className="text-center text-gray-700 font-bold mb-3">
                 选择支付方式
               </p>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <img 
                   src="/wechat-pay.jpg" 
                   alt="微信收款码" 
-                  className="w-1/2 rounded-lg"
+                  className="w-full sm:w-1/2 rounded-lg"
                 />
                 <img 
                   src="/alipay.jpg" 
                   alt="支付宝收款码" 
-                  className="w-1/2 rounded-lg"
+                  className="w-full sm:w-1/2 rounded-lg"
                 />
               </div>
               <p className="text-center text-gray-500 text-xs mt-2">
