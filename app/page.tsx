@@ -410,7 +410,7 @@ export default function Home() {
                 
                 {/* Initial buttons */}
                 {!showShare ? (
-                  <div className="flex justify-center gap-3">
+                  <div className="flex flex-col sm:flex-row justify-center gap-3">
                     <button
                       onClick={() => setShowShare(true)}
                       className="inline-block px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition"
@@ -488,7 +488,7 @@ export default function Home() {
                       onChange={(e) => setNickname(e.target.value)}
                       className="w-full px-4 py-2 bg-white/10 rounded-xl placeholder-white/50 outline-none focus:ring-2 focus:ring-pink-400 text-center"
                     />
-                    <div className="flex justify-center gap-3">
+                    <div className="flex flex-col sm:flex-row justify-center gap-3">
                       <button
                         onClick={() => {
                           setShowShare(false);
