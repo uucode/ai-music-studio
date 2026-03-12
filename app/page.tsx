@@ -356,7 +356,7 @@ export default function Home() {
               {generating ? (
                 <span className="flex items-center justify-center gap-2">
                   {generatingStage === 'lyrics' && '✍️ AI 写词中... (约60秒)'}
-                  {generatingStage === 'music' && '🎵 AI 作曲中... (约120秒)'}
+                  {generatingStage === 'music' && '🎵 AI 作曲中... (约180秒)'}
                   {generatingStage === 'done' && '🎉 完成！'}
                 </span>
               ) : (
