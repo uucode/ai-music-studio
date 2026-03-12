@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 
@@ -18,12 +17,12 @@ export default function Community() {
   const [shares, setShares] = useState<MusicShare[]>([]);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showDonate, setShowDonate] = useState(false);
-  const searchParams = useSearchParams();
 
   // Handle share link from URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const shareData = searchParams.get('share');
+      const params = new URLSearchParams(window.location.search);
+      const shareData = params.get('share');
       if (shareData) {
         try {
           const song = JSON.parse(decodeURIComponent(shareData));
@@ -35,12 +34,14 @@ export default function Community() {
             setShares(currentShares);
             alert('收到一首分享的歌曲！');
           }
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
         } catch (e) {
           console.error('Invalid share link', e);
         }
       }
     }
-  }, [searchParams]);
+  }, []);
 
   useEffect(() => {
     const loaded = JSON.parse(localStorage.getItem('musicShares') || '[]');

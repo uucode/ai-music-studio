@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 
 type MusicStyle = 'R&B' | '流行' | '抒情' | '电子' | '民谣' | '国风' | '爵士' | '说唱' | '摇滚' | '治愈';
@@ -54,12 +53,12 @@ export default function Home() {
   const [showShare, setShowShare] = useState(false);
   const [hasShared, setHasShared] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
-  const searchParams = useSearchParams();
   
   // Handle share link from URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const shareData = searchParams.get('share');
+      const params = new URLSearchParams(window.location.search);
+      const shareData = params.get('share');
       if (shareData) {
         try {
           const song = JSON.parse(decodeURIComponent(shareData));
@@ -70,12 +69,14 @@ export default function Home() {
             localStorage.setItem('musicShares', JSON.stringify(shares));
             alert('收到一首分享的歌曲！');
           }
+          // Clean URL
+          window.history.replaceState({}, '', window.location.pathname);
         } catch (e) {
           console.error('Invalid share link', e);
         }
       }
     }
-  }, [searchParams]);
+  }, []);
   
   // Output
   const [lyrics, setLyrics] = useState('');
@@ -498,7 +499,7 @@ export default function Home() {
                         取消
                       </button>
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const shareData = {
                             title: songTitle,
                             lyrics: lyrics,
