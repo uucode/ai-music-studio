@@ -559,26 +559,26 @@ export default function Home() {
       {/* Donation Modal */}
       {showDonate && (
         <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 overflow-y-auto"
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
           onClick={() => setShowDonate(false)}
         >
           <div 
-            className="bg-white rounded-2xl p-6 max-w-lg my-8"
+            className="bg-white rounded-2xl p-4 max-w-sm"
             onClick={(e) => e.stopPropagation()}
           >
             <p className="text-center text-gray-700 font-bold mb-3">
               选择支付方式
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex gap-2">
                 <img 
                   src="/wechat-pay.jpg" 
                   alt="微信收款码" 
-                  className="w-full sm:w-1/2 rounded-lg"
+                  className="w-1/2 rounded-lg"
                 />
                 <img 
                   src="/alipay.jpg" 
                   alt="支付宝收款码" 
-                  className="w-full sm:w-1/2 rounded-lg"
+                  className="w-1/2 rounded-lg"
                 />
               </div>
               <p className="text-center text-gray-500 text-xs mt-2">
