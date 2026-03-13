@@ -66,8 +66,9 @@ export async function POST(req: NextRequest) {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
       return NextResponse.json(
-        { error: `API 请求失败 (${response.status})，请重试` },
+        { error: `⚠️ AI 作曲服务异常 (HTTP ${response.status})${errBody ? '：' + errBody.slice(0, 200) : '，请稍后重试'}` },
         { status: 502 },
       );
     }

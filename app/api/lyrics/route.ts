@@ -153,8 +153,9 @@ ${contextLine}
     });
 
     if (!response.ok) {
+      const errBody = await response.text().catch(() => '');
       return NextResponse.json(
-        { error: `API 请求失败 (${response.status})，请重试` },
+        { error: `⚠️ AI 服务异常 (HTTP ${response.status})${errBody ? '：' + errBody.slice(0, 200) : '，请稍后重试'}` },
         { status: 502 },
       );
     }
@@ -162,32 +163,39 @@ ${contextLine}
     const data = await response.json();
 
     if (data.base_resp?.status_code !== 0) {
+      const code = data.base_resp?.status_code;
       const msg = data.base_resp?.status_msg || '';
 
       if (msg.includes('quota') || msg.includes('余额') || msg.includes('insufficient') || msg.includes('配额'))
-        return NextResponse.json({ error: '⚠️ API配额不足，请稍后再试' }, { status: 500 });
+        return NextResponse.json({ error: '⚠️ API 配额不足，请稍后再试' }, { status: 500 });
       if (msg.includes('timeout') || msg.includes('超时'))
-        return NextResponse.json({ error: '⏱️ 生成超时，请重试' }, { status: 500 });
+        return NextResponse.json({ error: '⏱️ AI 生成超时，请重试' }, { status: 500 });
+      if (msg.includes('rate') || msg.includes('limit') || msg.includes('频率'))
+        return NextResponse.json({ error: '⚠️ 请求太频繁，请等一会再试' }, { status: 429 });
+      if (msg.includes('invalid') || msg.includes('无效') || msg.includes('token'))
+        return NextResponse.json({ error: '⚠️ API 认证失败，请联系管理员' }, { status: 500 });
 
-      return NextResponse.json({ error: `❌ 歌词生成失败: ${msg || '请重试'}` }, { status: 500 });
+      return NextResponse.json({ error: `❌ 歌词生成失败 (${code}): ${msg || '未知错误，请重试'}` }, { status: 500 });
     }
 
     const lyrics = data.choices?.[0]?.message?.content;
 
     if (!lyrics || lyrics.trim().length < 10) {
-      return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
+      return NextResponse.json({ error: '📝 AI 返回的歌词内容过短，可能是生成异常，请重试' }, { status: 500 });
     }
 
     const chineseChars = (lyrics.match(/[\u4e00-\u9fa5]/g) || []).length;
     if (chineseChars < lyrics.length * 0.3) {
-      return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
+      return NextResponse.json({ error: '📝 AI 生成了非中文内容，请调整输入后重试' }, { status: 500 });
     }
 
     return NextResponse.json({ lyrics });
   } catch (error: any) {
-    let errorMessage = '服务器错误，请重试';
+    let errorMessage = '⚠️ 服务器错误，请重试';
     if (error.message?.includes('fetch failed')) {
-      errorMessage = '网络错误，请检查网络后重试';
+      errorMessage = '🌐 网络连接失败，请检查网络后重试';
+    } else if (error.message) {
+      errorMessage = `⚠️ 歌词生成出错：${error.message}`;
     }
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
