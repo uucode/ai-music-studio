@@ -17,6 +17,26 @@ export default function MySongs() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showDonate, setShowDonate] = useState(false);
 
+  const shareToCommunity = (song: MusicSong) => {
+    // Save to community shares
+    const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
+    const shareData = {
+      title: song.title,
+      lyrics: song.lyrics,
+      audioUrl: song.audioUrl,
+      style: song.style,
+      createdAt: song.createdAt
+    };
+    shares.unshift(shareData);
+    localStorage.setItem('musicShares', JSON.stringify(shares));
+    alert('已分享到社区！');
+  };
+
+  const copyLyrics = (lyrics: string) => {
+    navigator.clipboard.writeText(lyrics);
+    alert('歌词已复制到剪贴板！');
+  };
+
   useEffect(() => {
     const loaded = JSON.parse(localStorage.getItem('mySongs') || '[]');
     setSongs(loaded);
@@ -84,15 +104,28 @@ export default function MySongs() {
                         </div>
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteSong(index);
-                      }}
-                      className="p-2 hover:bg-white/10 rounded-lg transition text-white/40 hover:text-red-400"
-                    >
-                      🗑️
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          shareToCommunity(song);
+                        }}
+                        className="p-2 hover:bg-white/10 rounded-lg transition text-white/40 hover:text-pink-400"
+                        title="分享到社区"
+                      >
+                        📤
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSong(index);
+                        }}
+                        className="p-2 hover:bg-white/10 rounded-lg transition text-white/40 hover:text-red-400"
+                        title="删除"
+                      >
+                        🗑️
+                      </button>
+                    </div>
                   </div>
 
                   {/* Audio Player */}
@@ -115,6 +148,14 @@ export default function MySongs() {
                 {/* Expanded Content */}
                 {expandedId === index && (
                   <div className="mt-2 bg-black/20 rounded-2xl p-4">
+                    <div className="flex justify-end mb-2">
+                      <button
+                        onClick={() => copyLyrics(song.lyrics)}
+                        className="text-xs px-3 py-1 bg-pink-500/30 hover:bg-pink-500/50 rounded-lg transition"
+                      >
+                        📋 复制歌词
+                      </button>
+                    </div>
                     <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">
                       <ReactMarkdown
                         components={{
