@@ -19,6 +19,7 @@
     "@types/node": "25.4.0",
     "@types/react": "19.2.14",
     "autoprefixer": "^10.4.27",
+    "canvas": "^3.2.1",
     "postcss": "^8.5.8",
     "typescript": "5.9.3"
   }
