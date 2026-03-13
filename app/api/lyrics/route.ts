@@ -113,7 +113,7 @@ export async function POST(req: NextRequest) {
 ${contextLine}
 要求：
 - 严格按照用户的创作指令来写，如果指定了歌手风格/词人风格，必须深度模仿其用词习惯、意象选择、句式结构和韵脚特点
-- 语言：中文
+- 语言：默认中文，如果用户指定了其他语言则用对应语言创作
 - 第一行用《歌名》格式给歌曲起一个贴合内容的名字
 - 格式：用【Verse】【Pre-Chorus】【Chorus】【Bridge】【Outro】标注段落
 - 结构：2段Verse + 1段Chorus + 1段Bridge
@@ -124,7 +124,7 @@ ${contextLine}
 
 ${contextLine}
 要求：
-- 语言：中文
+- 语言：默认中文
 - 第一行用《歌名》格式给歌曲起一个贴合内容的名字
 - 格式：用【Verse】【Pre-Chorus】【Chorus】【Bridge】【Outro】标注段落
 - 结构：2段Verse + 1段Chorus + 1段Bridge
