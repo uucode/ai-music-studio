@@ -192,11 +192,6 @@ ${contextLine}
       return NextResponse.json({ error: '📝 AI 返回的歌词内容过短，可能是生成异常，请重试' }, { status: 500 });
     }
 
-    const chineseChars = (lyrics.match(/[\u4e00-\u9fa5]/g) || []).length;
-    if (chineseChars < lyrics.length * 0.3) {
-      return NextResponse.json({ error: '📝 AI 生成了非中文内容，请调整输入后重试' }, { status: 500 });
-    }
-
     return NextResponse.json({ lyrics });
   } catch (error: any) {
     let errorMessage = '⚠️ 服务器错误，请重试';
