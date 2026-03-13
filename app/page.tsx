@@ -142,22 +142,32 @@ export default function Home() {
         if (titleMatch) {
           generatedTitle = titleMatch[1];
         } else {
-          // Or generate based on style
-          const titles = {
-            'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后'],
-            '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒'],
-            '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过'],
-            '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨'],
-            '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路'],
-            '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖'],
-            '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆'],
-            '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '态度'],
-            '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血'],
-            '治愈': ['温暖', 'Sunshine', '拥抱', '光', '治愈', '心安']
+          // Generate title based on user's keyword/input + mood for more variety
+          const keywordBase = keyword?.trim() || customText?.trim() || '';
+          const moodBase = mood || '';
+          const styleBase = selectedStyle || '流行';
+          
+          // Create seed from inputs for variety
+          const seed = (keywordBase + moodBase + styleBase + Date.now()).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+          
+          // Extended title lists
+          const titlesByStyle: Record<string, string[]> = {
+            'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后', '深海', '第六感', '暖光', '即兴', '贪恋', '沉醉', '流转'],
+            '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒', '错过', '重来', '痕迹', '倒影', '答案', '小事', '平凡'],
+            '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过', '假设', '不过', '终于', '不期', '然后', '可能', '其实'],
+            '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨', '虚拟', '失控', '反射', '迭代', '震荡', '信号', '零点', '重启'],
+            '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路', '山丘', '候鸟', '纸飞机', '老地方', '时光机', '归途', '浅唱'],
+            '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖', '青花', '离人', '戏腔', '芳草', '相思', '渡口', '落花', '蒹葭'],
+            '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆', '迷雾', '威士忌', '暗潮', '慢镜头', '雨后'],
+            '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '炸裂', '突破', '硬核', '本色', '燥', '押', '麦克风'],
+            '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血', '烽火', '碎片', '嘶吼', '信仰', '星火'],
+            '治愈': ['温暖', 'Sunshine', '拥抱', '光', '治愈', '心安', '栖息', '小幸运', '柔软', '浅光', '慢时光', '归属']
           };
-          const options = titles[selectedStyle as keyof typeof titles] || titles['流行'];
-          const randomIndex = Math.floor(Date.now() % options.length);
-          generatedTitle = options[randomIndex] || options[0];
+          
+          const styleTitles = titlesByStyle[styleBase] || titlesByStyle['流行'];
+          // Use pseudo-random based on seed
+          const titleIndex = Math.floor((seed * 9301 + 49297) % 233280) % styleTitles.length;
+          generatedTitle = styleTitles[titleIndex] || styleTitles[0];
         }
         
         setSongTitle(generatedTitle);
