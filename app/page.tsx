@@ -147,7 +147,7 @@ export default function Home() {
           generatedTitle = titleMatch[1];
         } else {
           const options = STYLE_TITLES[selectedStyle] || STYLE_TITLES['流行'];
-          generatedTitle = options[Math.floor(Date.now() % options.length)] || options[0];
+          generatedTitle = options[Math.floor(Math.random() * options.length)];
         }
         setSongTitle(generatedTitle);
 
