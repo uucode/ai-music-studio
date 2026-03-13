@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '../../lib/rate-limit';
 
-const API_KEY = process.env.MINIMAX_API_KEY || '';
+const API_KEY = process.env.MINIMAX_API_KEY || 'sk-api-IV3qZ_MOiLHrws81u9j4vRMBFDADS2fHu4NhVcuLC8vPBUCCqrYs8o6_BnI3bvgj4650HmDKgTKmqR0EEitwDZxF8VK9GgqXajAHBKtylYDaVRzF1Jb13hc';
 
 const MOOD_TONE: Record<string, string> = {
   '开心': '明亮、欢快、甜蜜',
