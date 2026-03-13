@@ -227,6 +227,10 @@ export default function MySongs() {
                 {/* Expanded Content */}
                 {expandedId === index && (
                   <div className="mt-2 bg-black/20 rounded-2xl p-4">
+                    {!song.lyrics ? (
+                      <p className="text-white/50 text-center py-4">暂无歌词</p>
+                    ) : (
+                      <>
                     <div className="flex justify-end gap-2 mb-2">
                       <button
                         onClick={() => saveLyricsAsImage(song)}
@@ -253,6 +257,8 @@ export default function MySongs() {
                         {song.lyrics}
                       </ReactMarkdown>
                     </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
