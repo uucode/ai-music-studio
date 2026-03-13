@@ -188,8 +188,9 @@ export default function Home() {
           setStep('result');
           
           // Save to mySongs
+          const finalTitle = songTitle || `${selectedStyle}之歌`;
           const mySongData = {
-            title: songTitle,
+            title: finalTitle,
             lyrics: lyrics,
             audioUrl: musicData.audioUrl,
             style: selectedStyle,
