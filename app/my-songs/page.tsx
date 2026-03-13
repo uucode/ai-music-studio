@@ -37,6 +37,85 @@ export default function MySongs() {
     alert('歌词已复制到剪贴板！');
   };
 
+  const saveLyricsAsImage = async (song: MusicSong) => {
+    // Create a canvas to render lyrics as image
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Clean lyrics for display (remove markdown tags)
+    const cleanLyrics = song.lyrics
+      .replace(/【.*?】/g, '\n$&')
+      .replace(/\[.*?\]/g, '')
+      .replace(/Verse|Repeat|Chorus|Bridge|Pre-Chorus|Outro/g, '');
+
+    // Set canvas size
+    const width = 800;
+    const lineHeight = 36;
+    const padding = 60;
+    const titleHeight = 80;
+    
+    // Calculate height based on content
+    const lines = cleanLyrics.split('\n');
+    const maxLineLength = Math.max(...lines.map((l: string) => l.length));
+    const estimatedHeight = (lines.length * lineHeight) + titleHeight + padding * 2 + 100;
+    const height = Math.max(600, estimatedHeight);
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // Draw background
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, '#1e1b4b');
+    gradient.addColorStop(0.5, '#4c1d95');
+    gradient.addColorStop(1, '#be185d');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Draw title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 36px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`《${song.title}》`, width / 2, 80);
+
+    // Draw style tag
+    ctx.font = '20px sans-serif';
+    ctx.fillStyle = '#fbcfe8';
+    ctx.fillText(song.style, width / 2, 115);
+
+    // Draw lyrics
+    ctx.font = '24px "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#e9d5ff';
+    ctx.textAlign = 'left';
+    
+    let y = 170;
+    lines.forEach((line: string) => {
+      if (line.trim()) {
+        if (line.includes('【') || line.includes('】')) {
+          ctx.fillStyle = '#f9a8d4';
+          ctx.font = 'bold 26px "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+        } else {
+          ctx.fillStyle = '#e9d5ff';
+          ctx.font = '24px "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
+        }
+      }
+      ctx.fillText(line, padding, y);
+      y += lineHeight;
+    });
+
+    // Draw watermark
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('🎵 AI Music Studio', width / 2, height - 30);
+
+    // Download
+    const link = document.createElement('a');
+    link.download = `${song.title}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  };
+
   useEffect(() => {
     const loaded = JSON.parse(localStorage.getItem('mySongs') || '[]');
     setSongs(loaded);
@@ -148,7 +227,13 @@ export default function MySongs() {
                 {/* Expanded Content */}
                 {expandedId === index && (
                   <div className="mt-2 bg-black/20 rounded-2xl p-4">
-                    <div className="flex justify-end mb-2">
+                    <div className="flex justify-end gap-2 mb-2">
+                      <button
+                        onClick={() => saveLyricsAsImage(song)}
+                        className="text-xs px-3 py-1 bg-purple-500/30 hover:bg-purple-500/50 rounded-lg transition"
+                      >
+                        🖼️ 保存图片
+                      </button>
                       <button
                         onClick={() => copyLyrics(song.lyrics)}
                         className="text-xs px-3 py-1 bg-pink-500/30 hover:bg-pink-500/50 rounded-lg transition"
