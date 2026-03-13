@@ -187,8 +187,8 @@ export default function Home() {
           setGeneratingStage('done');
           setStep('result');
           
-          // Save to mySongs
-          const finalTitle = songTitle || `${selectedStyle}之歌`;
+          // Save to mySongs - use generatedTitle directly (state might not be updated yet)
+          const finalTitle = generatedTitle || `${selectedStyle}之歌`;
           const mySongData = {
             title: finalTitle,
             lyrics: lyrics,
