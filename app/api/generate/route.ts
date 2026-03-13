@@ -90,11 +90,13 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error('Music generation error:', error);
     
-    let errorMessage = '服务器错误，请重试';
+    let errorMessage = '⚠️ 服务器错误，请重试';
     if (error.name === 'AbortError') {
-      errorMessage = '生成超时，请重试';
+      errorMessage = '⏱️ 作曲时间过长（超过4分钟），请稍后再试或尝试简化歌词';
     } else if (error.message?.includes('fetch failed')) {
-      errorMessage = '网络错误，请检查网络后重试';
+      errorMessage = '🌐 网络连接失败，请检查网络';
+    } else if (error.message) {
+      errorMessage = `⚠️ 错误: ${error.message}`;
     }
     
     return NextResponse.json({ error: errorMessage }, { status: 500 });
