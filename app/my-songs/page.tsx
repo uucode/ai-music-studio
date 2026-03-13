@@ -17,8 +17,23 @@ export default function MySongs() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [showDonate, setShowDonate] = useState(false);
 
+  useEffect(() => {
+    console.log('Loading songs from localStorage...');
+    const loaded = JSON.parse(localStorage.getItem('mySongs') || '[]');
+    console.log('Loaded songs:', loaded.length);
+    setSongs(loaded);
+  }, []);
+
+  const deleteSong = (index: number) => {
+    if (confirm('确定删除这首歌曲吗？')) {
+      const newSongs = [...songs];
+      newSongs.splice(index, 1);
+      localStorage.setItem('mySongs', JSON.stringify(newSongs));
+      setSongs(newSongs);
+    }
+  };
+
   const shareToCommunity = (song: MusicSong) => {
-    // Save to community shares
     const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
     const shareData = {
       title: song.title,
@@ -38,33 +53,27 @@ export default function MySongs() {
   };
 
   const saveLyricsAsImage = async (song: MusicSong) => {
-    // Create a canvas to render lyrics as image
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clean lyrics for display (remove markdown tags)
     const cleanLyrics = song.lyrics
       .replace(/【.*?】/g, '\n$&')
       .replace(/\[.*?\]/g, '')
       .replace(/Verse|Repeat|Chorus|Bridge|Pre-Chorus|Outro/g, '');
 
-    // Set canvas size
     const width = 800;
     const lineHeight = 36;
     const padding = 60;
     const titleHeight = 80;
     
-    // Calculate height based on content
     const lines = cleanLyrics.split('\n');
-    const maxLineLength = Math.max(...lines.map((l: string) => l.length));
     const estimatedHeight = (lines.length * lineHeight) + titleHeight + padding * 2 + 100;
     const height = Math.max(600, estimatedHeight);
 
     canvas.width = width;
     canvas.height = height;
 
-    // Draw background
     const gradient = ctx.createLinearGradient(0, 0, width, height);
     gradient.addColorStop(0, '#1e1b4b');
     gradient.addColorStop(0.5, '#4c1d95');
@@ -72,18 +81,15 @@ export default function MySongs() {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Draw title
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 36px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`《${song.title}》`, width / 2, 80);
 
-    // Draw style tag
     ctx.font = '20px sans-serif';
     ctx.fillStyle = '#fbcfe8';
     ctx.fillText(song.style, width / 2, 115);
 
-    // Draw lyrics
     ctx.font = '24px "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = '#e9d5ff';
     ctx.textAlign = 'left';
@@ -103,31 +109,20 @@ export default function MySongs() {
       y += lineHeight;
     });
 
-    // Draw watermark
     ctx.fillStyle = 'rgba(255,255,255,0.3)';
     ctx.font = '16px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('🎵 AI Music Studio', width / 2, height - 30);
 
-    // Download
     const link = document.createElement('a');
     link.download = `${song.title}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
   };
 
-  useEffect(() => {
-    const loaded = JSON.parse(localStorage.getItem('mySongs') || '[]');
-    setSongs(loaded);
-  }, []);
-
-  const deleteSong = (index: number) => {
-    if (confirm('确定删除这首歌曲吗？')) {
-      const newSongs = [...songs];
-      newSongs.splice(index, 1);
-      localStorage.setItem('mySongs', JSON.stringify(newSongs));
-      setSongs(newSongs);
-    }
+  const toggleExpand = (index: number) => {
+    console.log('Toggle expand:', index, 'current:', expandedId);
+    setExpandedId(expandedId === index ? null : index);
   };
 
   return (
@@ -159,27 +154,25 @@ export default function MySongs() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {songs.map((song, index) => (
-              <div key={index}>
-                {/* List Item */}
+              <div key={index} className="bg-white/10 backdrop-blur-lg rounded-2xl overflow-hidden">
+                {/* Main Card */}
                 <div 
-                  onClick={() => setExpandedId(expandedId === index ? null : index)}
-                  className={`bg-white/10 backdrop-blur-lg rounded-2xl p-4 cursor-pointer transition ${
-                    expandedId === index ? 'ring-2 ring-pink-400' : 'hover:bg-white/15'
-                  }`}
+                  onClick={() => toggleExpand(index)}
+                  className="p-4 cursor-pointer hover:bg-white/5 transition"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="text-2xl">
+                      <div className="text-3xl">
                         {expandedId === index ? '📕' : '📗'}
                       </div>
                       <div>
-                        <h3 className="font-bold text-lg">《{song.title}》</h3>
+                        <h3 className="font-bold text-lg">《{song.title || '未命名'}》</h3>
                         <div className="flex items-center gap-2 text-sm text-purple-200">
-                          <span className="px-2 py-0.5 bg-pink-500/30 rounded">{song.style}</span>
+                          <span className="px-2 py-0.5 bg-pink-500/30 rounded">{song.style || '未知'}</span>
                           <span>•</span>
-                          <span>{new Date(song.createdAt).toLocaleDateString('zh-CN')}</span>
+                          <span>{song.createdAt ? new Date(song.createdAt).toLocaleDateString('zh-CN') : '未知'}</span>
                         </div>
                       </div>
                     </div>
@@ -189,7 +182,7 @@ export default function MySongs() {
                           e.stopPropagation();
                           shareToCommunity(song);
                         }}
-                        className="p-2 hover:bg-white/10 rounded-lg transition text-white/40 hover:text-pink-400"
+                        className="p-2 hover:bg-white/10 rounded-lg transition text-white/50 hover:text-pink-400"
                         title="分享到社区"
                       >
                         📤
@@ -199,7 +192,7 @@ export default function MySongs() {
                           e.stopPropagation();
                           deleteSong(index);
                         }}
-                        className="p-2 hover:bg-white/10 rounded-lg transition text-white/40 hover:text-red-400"
+                        className="p-2 hover:bg-white/10 rounded-lg transition text-white/50 hover:text-red-400"
                         title="删除"
                       >
                         🗑️
@@ -209,55 +202,50 @@ export default function MySongs() {
 
                   {/* Audio Player */}
                   {song.audioUrl && (
-                    <div className="mt-4 pt-3 border-t border-white/10">
-                      <audio controls className="w-full">
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                      <audio controls className="w-full h-10">
                         <source src={song.audioUrl} type="audio/mpeg" />
                       </audio>
                     </div>
                   )}
 
-                  {/* Hint */}
-                  <div className="mt-2 ml-4 flex items-center justify-between">
-                    <span className="text-white/30 text-xs">
-                      {expandedId === index ? '▲ 点击收起' : '▼ 点击查看歌词'}
-                    </span>
+                  {/* Expand Hint */}
+                  <div className="mt-2 text-center text-white/40 text-sm">
+                    {expandedId === index ? '▲ 点击收起' : '▼ 点击查看歌词'}
                   </div>
                 </div>
 
-                {/* Expanded Content */}
+                {/* Expanded Lyrics Section */}
                 {expandedId === index && (
-                  <div className="mt-2 bg-black/20 rounded-2xl p-4">
-                    {!song.lyrics ? (
-                      <p className="text-white/50 text-center py-4">暂无歌词</p>
-                    ) : (
-                      <>
-                    <div className="flex justify-end gap-2 mb-2">
-                      <button
-                        onClick={() => saveLyricsAsImage(song)}
-                        className="text-xs px-3 py-1 bg-purple-500/30 hover:bg-purple-500/50 rounded-lg transition"
-                      >
-                        🖼️ 保存图片
-                      </button>
-                      <button
-                        onClick={() => copyLyrics(song.lyrics)}
-                        className="text-xs px-3 py-1 bg-pink-500/30 hover:bg-pink-500/50 rounded-lg transition"
-                      >
-                        📋 复制歌词
-                      </button>
+                  <div className="bg-black/30 p-4 border-t border-white/10">
+                    <div className="flex justify-end gap-2 mb-3">
+                      {song.lyrics && (
+                        <>
+                          <button
+                            onClick={() => saveLyricsAsImage(song)}
+                            className="text-xs px-3 py-1.5 bg-purple-500/40 hover:bg-purple-500/60 rounded-lg transition"
+                          >
+                            🖼️ 保存图片
+                          </button>
+                          <button
+                            onClick={() => copyLyrics(song.lyrics)}
+                            className="text-xs px-3 py-1.5 bg-pink-500/40 hover:bg-pink-500/60 rounded-lg transition"
+                          >
+                            📋 复制歌词
+                          </button>
+                        </>
+                      )}
                     </div>
-                    <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">
-                      <ReactMarkdown
-                        components={{
-                          p: ({node, ...props}) => <p className="text-purple-100 leading-relaxed mb-3" {...props} />,
-                          h1: ({node, ...props}) => <h1 className="text-lg font-bold text-pink-300 mt-4 mb-2" {...props} />,
-                          h2: ({node, ...props}) => <h2 className="text-md font-bold text-pink-300 mt-3 mb-2" {...props} />,
-                          h3: ({node, ...props}) => <h3 className="text-sm font-bold text-pink-200 mt-3 mb-1" {...props} />,
-                        }}
-                      >
+                    
+                    {song.lyrics ? (
+                      <div className="whitespace-pre-wrap text-purple-100 text-sm leading-relaxed bg-black/20 p-3 rounded-lg max-h-96 overflow-y-auto">
                         {song.lyrics}
-                      </ReactMarkdown>
-                    </div>
-                      </>
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 text-white/40">
+                        <p>暂无歌词</p>
+                        <p className="text-xs mt-2">这首歌曲创作时未能保存歌词</p>
+                      </div>
                     )}
                   </div>
                 )}
