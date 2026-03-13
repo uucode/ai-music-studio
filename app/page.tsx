@@ -76,12 +76,9 @@ export default function Home() {
     setGeneratingStage('lyrics');
     setError('');
 
+    const abortController = new AbortController();
     const timeoutId = setTimeout(() => {
-      if (generatingRef.current) {
-        setError('生成时间较长，请检查网络后重试');
-        setGenerating(false);
-        generatingRef.current = false;
-      }
+      abortController.abort();
     }, 180_000);
 
     try {
@@ -96,6 +93,7 @@ export default function Home() {
           constellation,
           mbti,
         }),
+        signal: abortController.signal,
       });
 
       if (!res.ok) {
@@ -128,6 +126,7 @@ export default function Home() {
             style: selectedStyle,
             title: mbti || mood || keyword || '随心之作',
           }),
+          signal: abortController.signal,
         });
 
         if (!musicRes.ok) {
@@ -158,7 +157,11 @@ export default function Home() {
         }
       }
     } catch (err: any) {
-      setError(err.message || '生成失败，请检查网络后重试');
+      if (err.name === 'AbortError') {
+        setError('⏱️ 生成时间过长（超过3分钟），请重试或简化输入');
+      } else {
+        setError(err.message || '生成失败，请检查网络后重试');
+      }
       setStep('input');
     } finally {
       clearTimeout(timeoutId);
