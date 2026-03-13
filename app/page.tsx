@@ -79,7 +79,7 @@ export default function Home() {
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => {
       abortController.abort();
-    }, 180_000);
+    }, 300_000);
 
     try {
       setGeneratingStage('lyrics');
@@ -158,7 +158,7 @@ export default function Home() {
       }
     } catch (err: any) {
       if (err.name === 'AbortError') {
-        setError('⏱️ 生成时间过长（超过3分钟），请重试或简化输入');
+        setError('⏱️ 生成时间过长（超过5分钟），请重试或简化输入');
       } else {
         setError(err.message || '生成失败，请检查网络后重试');
       }
