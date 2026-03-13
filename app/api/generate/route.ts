@@ -25,6 +25,10 @@ export async function POST(req: NextRequest) {
 
     const stylePrompt = stylePrompts[style] || stylePrompts['流行'];
 
+    // Add timeout controller
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 min timeout
+
     const response = await fetch('https://api.minimax.chat/v1/music_generation', {
       method: 'POST',
       headers: {
@@ -37,26 +41,40 @@ export async function POST(req: NextRequest) {
         prompt: stylePrompt,
         lyrics: lyrics,
         output_format: 'url'
-      })
+      }),
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
+
     const data = await response.json();
+    
+    console.log('MiniMax API response:', JSON.stringify(data));
 
     if (data.base_resp?.status_code !== 0) {
-      return NextResponse.json({ 
-        error: data.base_resp?.status_msg || '生成失败' 
-      }, { status: 500 });
+      const errorMsg = data.base_resp?.status_msg || '生成失败，请重试';
+      console.error('MiniMax error:', errorMsg);
+      return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 
     const audioUrl = data.data?.audio;
 
     if (!audioUrl) {
-      return NextResponse.json({ error: '获取音频失败' }, { status: 500 });
+      console.error('No audio URL in response:', data);
+      return NextResponse.json({ error: '获取音频失败，请重试' }, { status: 500 });
     }
 
     return NextResponse.json({ audioUrl });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Music generation error:', error);
-    return NextResponse.json({ error: '服务器错误' }, { status: 500 });
+    
+    let errorMessage = '服务器错误，请重试';
+    if (error.name === 'AbortError') {
+      errorMessage = '生成超时，请重试';
+    } else if (error.message?.includes('fetch failed')) {
+      errorMessage = '网络错误，请检查网络后重试';
+    }
+    
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

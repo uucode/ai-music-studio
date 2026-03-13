@@ -74,26 +74,22 @@ export async function POST(req: NextRequest) {
     const stylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS['流行'];
 
     // Build influencing factors
-    let toneGuide = '';      // 心情 → 情感基调
-    let vibeGuide = '';      // 星座 → 意象氛围  
-    let styleGuide = '';    // MBTI → 表达风格
+    let toneGuide = '';
+    let vibeGuide = '';
+    let styleGuide = '';
 
-    // 心情优先级最高
     if (mood && MOOD_TONE[mood]) {
       toneGuide = `情感基调：${MOOD_TONE[mood]}，`;
     }
 
-    // 星座优先级第二
     if (constellation && CONSTELLATION_VIBE[constellation]) {
       vibeGuide = `意象氛围：${CONSTELLATION_VIBE[constellation]}，`;
     }
 
-    // MBTI优先级第三
     if (mbti && MBTI_STYLE[mbti]) {
       styleGuide = `表达风格：${MBTI_STYLE[mbti]}，`;
     }
 
-    // 用户自定义输入
     let userInput = '';
     if (prompt && prompt.trim()) {
       userInput = `\n用户想表达：${prompt}`;
@@ -130,20 +126,31 @@ ${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
     });
 
     const data = await response.json();
+    
+    console.log('Lyrics API response:', JSON.stringify(data));
 
     if (data.base_resp?.status_code !== 0) {
-      return NextResponse.json({ error: '生成失败' }, { status: 500 });
+      const errorMsg = data.base_resp?.status_msg || '歌词生成失败，请重试';
+      console.error('Lyrics error:', errorMsg);
+      return NextResponse.json({ error: errorMsg }, { status: 500 });
     }
 
     const lyrics = data.choices?.[0]?.message?.content;
 
     if (!lyrics) {
-      return NextResponse.json({ error: '生成失败' }, { status: 500 });
+      console.error('No lyrics in response:', data);
+      return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
     }
 
     return NextResponse.json({ lyrics });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Lyrics generation error:', error);
-    return NextResponse.json({ error: '服务器错误' }, { status: 500 });
+    
+    let errorMessage = '服务器错误，请重试';
+    if (error.message?.includes('fetch failed')) {
+      errorMessage = '网络错误，请检查网络后重试';
+    }
+    
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
