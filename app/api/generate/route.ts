@@ -23,14 +23,9 @@ export async function POST(req: NextRequest) {
       '治愈': '治愈系，温暖，疗愈，温柔',
     };
 
-    // Validate input
-    if (!lyrics || lyrics.trim().length < 10) {
-      return NextResponse.json({ error: '歌词太短，无法生成歌曲' }, { status: 400 });
-    }
-
-    // Check lyrics has verse/chorus structure
-    if (!lyrics.includes('【') && !lyrics.includes('[')) {
-      return NextResponse.json({ error: '歌词格式不正确' }, { status: 400 });
+    // Validate input - be more lenient
+    if (!lyrics || lyrics.trim().length < 5) {
+      return NextResponse.json({ error: '歌词太短' }, { status: 400 });
     }
 
     const stylePrompt = stylePrompts[style] || stylePrompts['流行'];

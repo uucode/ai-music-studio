@@ -137,16 +137,17 @@ ${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
 
     const lyrics = data.choices?.[0]?.message?.content;
 
-    // Validate lyrics
-    if (!lyrics || lyrics.trim().length < 20) {
-      console.error('Lyrics too short or empty:', lyrics);
+    // Validate lyrics - be more lenient
+    if (!lyrics || lyrics.trim().length < 10) {
+      console.error('Lyrics too short:', lyrics);
       return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
     }
 
-    // Check lyrics has proper structure
-    if (!lyrics.includes('【') && !lyrics.includes('Verse') && !lyrics.includes('主歌') && !lyrics.includes('副歌') && !lyrics.includes('Chorus')) {
-      console.error('Lyrics format invalid:', lyrics);
-      return NextResponse.json({ error: '歌词格式不正确，请重试' }, { status: 500 });
+    // Just check it's mostly Chinese characters (at least 50%)
+    const chineseChars = (lyrics.match(/[\u4e00-\u9fa5]/g) || []).length;
+    if (chineseChars < lyrics.length * 0.3) {
+      console.error('Lyrics not enough Chinese:', lyrics);
+      return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
     }
 
     return NextResponse.json({ lyrics });
