@@ -126,16 +126,16 @@ export default function Home() {
       if (data.error) throw new Error(data.error);
 
       if (data.lyrics) {
-        const generatedLyrics = data.lyrics;
-        setLyrics(generatedLyrics);
-
-        const titleMatch = data.lyrics.match(/《([^》]+)》/);
+        const titleMatch = data.lyrics.match(/^[^\n]*《([^》]+)》[^\n]*/);
         let generatedTitle = '';
+        let generatedLyrics = data.lyrics;
         if (titleMatch) {
           generatedTitle = titleMatch[1];
+          generatedLyrics = data.lyrics.replace(titleMatch[0], '').replace(/^\s*\n/, '');
         } else {
           generatedTitle = `随心${selectedStyle}`;
         }
+        setLyrics(generatedLyrics);
         setSongTitle(generatedTitle);
 
         setGeneratingStage('music');
