@@ -5,49 +5,40 @@ import Link from 'next/link';
 import { useToast } from '../components/Toast';
 import { DonateModal } from '../components/DonateModal';
 import { LyricsRenderer } from '../components/LyricsRenderer';
-import type { MusicShare } from '../lib/types';
+import type { CommunityRow } from '../lib/supabase';
 
 export default function Community() {
   const { toast } = useToast();
-  const [shares, setShares] = useState<MusicShare[]>([]);
+  const [songs, setSongs] = useState<CommunityRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [showDonate, setShowDonate] = useState(false);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shareData = params.get('share');
-    if (shareData) {
-      try {
-        const song = JSON.parse(decodeURIComponent(shareData));
-        const currentShares: MusicShare[] = JSON.parse(localStorage.getItem('musicShares') || '[]');
-        const exists = currentShares.some(s => s.title === song.title && s.lyrics === song.lyrics);
-        if (!exists) {
-          currentShares.unshift(song);
-          localStorage.setItem('musicShares', JSON.stringify(currentShares));
-          setShares(currentShares);
-          toast('收到一首分享的歌曲！', 'info');
-        }
-        window.history.replaceState({}, '', window.location.pathname);
-      } catch {
-        // invalid share link
-      }
-    }
-  }, [toast]);
-
-  useEffect(() => {
-    const loaded: MusicShare[] = JSON.parse(localStorage.getItem('musicShares') || '[]');
-    setShares(loaded);
+    fetchSongs();
   }, []);
 
-  const getKey = (share: MusicShare) => `${share.createdAt}-${share.title}`;
+  const fetchSongs = async () => {
+    try {
+      const res = await fetch('/api/community');
+      const data = await res.json();
+      if (data.songs) {
+        setSongs(data.songs);
+      }
+    } catch {
+      toast('加载社区歌曲失败', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const copyShareLink = async (share: MusicShare) => {
-    const shareLink = `${window.location.origin}/?share=${encodeURIComponent(JSON.stringify(share))}`;
+  const copyShareLink = async (song: CommunityRow) => {
+    const shareLink = `${window.location.origin}/community`;
     try {
       await navigator.clipboard.writeText(shareLink);
-      toast('分享链接已复制！');
+      toast('链接已复制！');
     } catch {
-      toast('复制失败，请手动复制', 'error');
+      toast('复制失败', 'error');
     }
   };
 
@@ -64,7 +55,12 @@ export default function Community() {
           </div>
         </div>
 
-        {shares.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="text-4xl mb-4 animate-pulse">🎵</div>
+            <p className="text-purple-200">加载中...</p>
+          </div>
+        ) : songs.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">🎵</div>
             <p className="text-purple-200 mb-4">还没有人分享歌曲</p>
@@ -77,13 +73,12 @@ export default function Community() {
           </div>
         ) : (
           <div className="space-y-3">
-            {shares.map(share => {
-              const key = getKey(share);
-              const isExpanded = expandedId === key;
+            {songs.map(song => {
+              const isExpanded = expandedId === song.id;
               return (
-                <div key={key}>
+                <div key={song.id}>
                   <div
-                    onClick={() => setExpandedId(isExpanded ? null : key)}
+                    onClick={() => setExpandedId(isExpanded ? null : song.id)}
                     className={`bg-white/10 backdrop-blur-lg rounded-2xl p-4 cursor-pointer transition ${
                       isExpanded ? 'ring-2 ring-pink-400' : 'hover:bg-white/15'
                     }`}
@@ -92,22 +87,22 @@ export default function Community() {
                       <div className="flex items-center gap-4">
                         <div className="text-2xl">{isExpanded ? '📕' : '📗'}</div>
                         <div>
-                          <h3 className="font-bold text-lg">《{share.title}》</h3>
+                          <h3 className="font-bold text-lg">《{song.title}》</h3>
                           <div className="flex items-center gap-2 text-sm text-purple-200">
-                            <span className="px-2 py-0.5 bg-pink-500/30 rounded">{share.style}</span>
+                            <span className="px-2 py-0.5 bg-pink-500/30 rounded">{song.style}</span>
                             <span>•</span>
-                            <span>{share.nickname || '匿名用户'}</span>
+                            <span>{song.nickname || '匿名用户'}</span>
                             <span>•</span>
-                            <span>{new Date(share.createdAt).toLocaleDateString('zh-CN')}</span>
+                            <span>{new Date(song.created_at).toLocaleDateString('zh-CN')}</span>
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    {share.audioUrl && (
+                    {song.audio_url && (
                       <div className="mt-4 pt-3 border-t border-white/10">
                         <audio controls className="w-full" onClick={e => e.stopPropagation()}>
-                          <source src={share.audioUrl} type="audio/mpeg" />
+                          <source src={song.audio_url} type="audio/mpeg" />
                         </audio>
                       </div>
                     )}
@@ -117,7 +112,7 @@ export default function Community() {
                         {isExpanded ? '▲ 点击收起' : '▼ 点击查看歌词'}
                       </span>
                       <button
-                        onClick={e => { e.stopPropagation(); copyShareLink(share); }}
+                        onClick={e => { e.stopPropagation(); copyShareLink(song); }}
                         className="text-white/30 text-xs hover:text-pink-300"
                       >
                         📤 分享
@@ -127,7 +122,7 @@ export default function Community() {
 
                   {isExpanded && (
                     <div className="mt-2 bg-black/20 rounded-2xl p-4">
-                      <LyricsRenderer lyrics={share.lyrics} compact />
+                      <LyricsRenderer lyrics={song.lyrics} compact />
                     </div>
                   )}
                 </div>
@@ -136,9 +131,9 @@ export default function Community() {
           </div>
         )}
 
-        {shares.length > 0 && (
+        {songs.length > 0 && (
           <div className="text-center mt-6 text-purple-200 text-sm">
-            共 {shares.length} 首歌曲
+            共 {songs.length} 首歌曲
           </div>
         )}
 

@@ -62,25 +62,6 @@ export default function Home() {
   const [hasShared, setHasShared] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shareData = params.get('share');
-    if (shareData) {
-      try {
-        const song = JSON.parse(decodeURIComponent(shareData));
-        const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
-        const exists = shares.some((s: any) => s.title === song.title && s.lyrics === song.lyrics);
-        if (!exists) {
-          shares.unshift(song);
-          localStorage.setItem('musicShares', JSON.stringify(shares));
-          toast('收到一首分享的歌曲！', 'info');
-        }
-        window.history.replaceState({}, '', window.location.pathname);
-      } catch {
-        // invalid share link, ignore
-      }
-    }
-  }, [toast]);
 
   const [lyrics, setLyrics] = useState('');
   const [songTitle, setSongTitle] = useState('');
@@ -275,29 +256,38 @@ export default function Home() {
   };
 
   const handleShare = async () => {
-    const shareData = {
-      title: songTitle,
-      lyrics,
-      audioUrl,
-      style: selectedStyle,
-      nickname: nickname || '匿名用户',
-      createdAt: new Date().toISOString(),
-    };
-    const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
-    shares.unshift(shareData);
-    localStorage.setItem('musicShares', JSON.stringify(shares));
-
-    const shareLink = `${window.location.origin}/?share=${encodeURIComponent(JSON.stringify(shareData))}`;
     try {
-      await navigator.clipboard.writeText(shareLink);
-      toast('已分享到社区！链接已复制到剪贴板');
-    } catch {
-      toast('已分享到社区！', 'info');
-    }
+      const res = await fetch('/api/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: songTitle,
+          lyrics,
+          audioUrl,
+          style: selectedStyle,
+          nickname: nickname || '匿名用户',
+        }),
+      });
 
-    setShowShare(false);
-    setNickname('');
-    setHasShared(true);
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '分享失败');
+      }
+
+      const shareLink = `${window.location.origin}/community`;
+      try {
+        await navigator.clipboard.writeText(shareLink);
+        toast('已分享到社区！链接已复制到剪贴板');
+      } catch {
+        toast('已分享到社区！');
+      }
+
+      setShowShare(false);
+      setNickname('');
+      setHasShared(true);
+    } catch (err: any) {
+      toast(err.message || '分享失败，请重试', 'error');
+    }
   };
 
   return (

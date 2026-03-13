@@ -55,18 +55,29 @@ export default function MySongs() {
     }
   };
 
-  const shareToCommunity = (song: MusicSong, nickname: string) => {
-    const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
-    shares.unshift({
-      title: song.title,
-      lyrics: song.lyrics,
-      audioUrl: song.audioUrl,
-      style: song.style,
-      nickname: nickname || '匿名用户',
-      createdAt: song.createdAt,
-    });
-    localStorage.setItem('musicShares', JSON.stringify(shares));
-    toast('已分享到社区！');
+  const shareToCommunity = async (song: MusicSong, nickname: string) => {
+    try {
+      const res = await fetch('/api/community', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: song.title,
+          lyrics: song.lyrics,
+          audioUrl: song.audioUrl,
+          style: song.style,
+          nickname: nickname || '匿名用户',
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '分享失败');
+      }
+
+      toast('已分享到社区！');
+    } catch (err: any) {
+      toast(err.message || '分享失败，请重试', 'error');
+    }
     setSharingIndex(null);
     setNicknameInput('');
   };
