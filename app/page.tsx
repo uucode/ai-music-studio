@@ -17,7 +17,7 @@ const MUSIC_STYLES: { name: MusicStyle; desc: string; icon: string }[] = [
   { name: '说唱', desc: 'Rap说唱', icon: '🧢' },
   { name: '摇滚', desc: '摇滚乐', icon: '🎸' },
   { name: '蓝调', desc: 'Blues', icon: '🎺' },
-  { name: '乡村', desc: 'Country', icon: '🌾' },
+  { name: '乡村', desc: 'Country', icon: '🏡' },
   { name: '灵魂', desc: 'Soul', icon: '🔥' },
 ];
 
