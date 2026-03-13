@@ -144,7 +144,7 @@ ${contextLine}
         'Authorization': `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'MiniMax-M2.1',
+        model: 'MiniMax-M2.5',
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: lyricsPrompt },
