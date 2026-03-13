@@ -37,18 +37,6 @@ const MOODS: { name: Mood; desc: string; icon: string }[] = [
 const MBTI_LIST: MBTI[] = ['INTJ', 'INTP', 'ENTJ', 'ENTP', 'INFJ', 'INFP', 'ENFJ', 'ENFP', 'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ', 'ISTP', 'ISFP', 'ESTP', 'ESFP'];
 const CONSTELLATIONS: Constellation[] = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
 
-const STYLE_TITLES: Record<string, string[]> = {
-  'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后'],
-  '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒'],
-  '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过'],
-  '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨'],
-  '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路'],
-  '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖'],
-  '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆'],
-  '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '态度'],
-  '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血'],
-  '治愈': ['温暖', 'Sunshine', '拥抱', '光', '治愈', '心安'],
-};
 
 function escapeHtml(str: string) {
   return str
@@ -146,8 +134,7 @@ export default function Home() {
         if (titleMatch) {
           generatedTitle = titleMatch[1];
         } else {
-          const options = STYLE_TITLES[selectedStyle] || STYLE_TITLES['流行'];
-          generatedTitle = options[Math.floor(Math.random() * options.length)];
+          generatedTitle = `随心${selectedStyle}`;
         }
         setSongTitle(generatedTitle);
 
