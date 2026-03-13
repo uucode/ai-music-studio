@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '../../lib/rate-limit';
 
-const API_KEY = process.env.MINIMAX_API_KEY || 'sk-api-IV3qZ_MOiLHrws81u9j4vRMBFDADS2fHu4NhVcuLC8vPBUCCqrYs8o6_BnI3bvgj4650HmDKgTKmqR0EEitwDZxF8VK9GgqXajAHBKtylYDaVRzF1Jb13hc';
+const API_KEY = process.env.MINIMAX_API_KEY || '';
 
 const MOOD_TONE: Record<string, string> = {
   '开心': '明亮、欢快、甜蜜',
@@ -90,11 +90,17 @@ export async function POST(req: NextRequest) {
     const userText = hasUserInput ? prompt.trim() : '';
 
     const contextParts: string[] = [];
-    if (mood && MOOD_TONE[mood]) contextParts.push(`情感基调：${MOOD_TONE[mood]}`);
-    if (constellation && CONSTELLATION_VIBE[constellation]) contextParts.push(`意象氛围：${CONSTELLATION_VIBE[constellation]}`);
-    if (mbti && MBTI_STYLE[mbti]) contextParts.push(`表达风格：${MBTI_STYLE[mbti]}`);
+    if (mood && MOOD_TONE[mood]) {
+      contextParts.push(`这首歌的情绪是「${mood}」的——整体氛围偏${MOOD_TONE[mood]}`);
+    }
+    if (constellation && CONSTELLATION_VIBE[constellation]) {
+      contextParts.push(`听众是${constellation}的性格，歌词的意象可以融入${CONSTELLATION_VIBE[constellation]}的元素`);
+    }
+    if (mbti && MBTI_STYLE[mbti]) {
+      contextParts.push(`听众的性格是${mbti}，歌词的表达方式偏${MBTI_STYLE[mbti]}`);
+    }
 
-    const contextLine = contextParts.length > 0 ? contextParts.join('；') + '\n' : '';
+    const contextLine = contextParts.length > 0 ? contextParts.join('。\n') + '。\n' : '';
 
     let lyricsPrompt: string;
 

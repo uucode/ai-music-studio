@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '../../lib/rate-limit';
 
-const API_KEY = process.env.MINIMAX_API_KEY || 'sk-api-IV3qZ_MOiLHrws81u9j4vRMBFDADS2fHu4NhVcuLC8vPBUCCqrYs8o6_BnI3bvgj4650HmDKgTKmqR0EEitwDZxF8VK9GgqXajAHBKtylYDaVRzF1Jb13hc';
+const API_KEY = process.env.MINIMAX_API_KEY || '';
 
 const STYLE_PROMPTS: Record<string, string> = {
   'R&B': 'R&B节奏，蓝调元素，律动感，女声，groove，性感慵懒',
