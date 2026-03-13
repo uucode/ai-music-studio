@@ -20,7 +20,8 @@ export default function MySongs() {
   useEffect(() => {
     console.log('Loading songs from localStorage...');
     const loaded = JSON.parse(localStorage.getItem('mySongs') || '[]');
-    console.log('Loaded songs:', loaded.length);
+    console.log('Loaded songs count:', loaded.length);
+    console.log('First song sample:', loaded[0] ? { title: loaded[0].title, hasLyrics: !!loaded[0].lyrics, lyricsLength: loaded[0].lyrics?.length } : 'none');
     setSongs(loaded);
   }, []);
 
@@ -220,7 +221,7 @@ export default function MySongs() {
                 {/* Expanded Lyrics Section */}
                 {expandedId === index && (
                   <div className="mt-2 bg-black/20 rounded-2xl p-4">
-                    {song.lyrics ? (
+                    {song.lyrics && song.lyrics.length > 0 ? (
                       <>
                         <div className="flex justify-end gap-2 mb-3">
                           <button
@@ -252,6 +253,7 @@ export default function MySongs() {
                     ) : (
                       <div className="text-center py-6 text-white/40">
                         <p>暂无歌词</p>
+                        <p className="text-xs mt-1">lyrics: "{song.lyrics || 'undefined'}"</p>
                       </div>
                     )}
                   </div>
