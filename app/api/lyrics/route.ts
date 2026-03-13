@@ -130,9 +130,16 @@ ${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
     console.log('Lyrics API response:', JSON.stringify(data));
 
     if (data.base_resp?.status_code !== 0) {
-      const errorMsg = data.base_resp?.status_msg || '歌词生成失败，请重试';
-      console.error('Lyrics error:', errorMsg);
-      return NextResponse.json({ error: errorMsg }, { status: 500 });
+      const errorMsg = data.base_resp?.status_msg || '';
+      
+      if (errorMsg.includes('quota') || errorMsg.includes('余额') || errorMsg.includes('insufficient') || errorMsg.includes('配额')) {
+        return NextResponse.json({ error: '⚠️ API配额不足，请稍后再试' }, { status: 500 });
+      }
+      if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
+        return NextResponse.json({ error: '⏱️ 生成超时，请重试' }, { status: 500 });
+      }
+      
+      return NextResponse.json({ error: `❌ 歌词生成失败: ${errorMsg || '请重试'}` }, { status: 500 });
     }
 
     const lyrics = data.choices?.[0]?.message?.content;

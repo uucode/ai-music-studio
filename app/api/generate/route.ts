@@ -57,16 +57,33 @@ export async function POST(req: NextRequest) {
     console.log('MiniMax API response:', JSON.stringify(data));
 
     if (data.base_resp?.status_code !== 0) {
-      const errorMsg = data.base_resp?.status_msg || '生成失败，请重试';
-      console.error('MiniMax error:', errorMsg);
-      return NextResponse.json({ error: errorMsg }, { status: 500 });
+      const errorMsg = data.base_resp?.status_msg || '';
+      
+      // More specific error messages
+      if (errorMsg.includes('quota') || errorMsg.includes('余额') || errorMsg.includes('insufficient') || errorMsg.includes('配额')) {
+        return NextResponse.json({ error: '⚠️ API配额不足，请稍后再试或联系管理员' }, { status: 500 });
+      }
+      if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
+        return NextResponse.json({ error: '⏱️ 生成超时，请重试' }, { status: 500 });
+      }
+      if (errorMsg.includes('lyrics') || errorMsg.includes('歌词')) {
+        return NextResponse.json({ error: '📝 歌词不符合要求，请重试' }, { status: 500 });
+      }
+      if (errorMsg.includes('model') || errorMsg.includes('模型')) {
+        return NextResponse.json({ error: '🤖 模型错误，请重试' }, { status: 500 });
+      }
+      if (errorMsg.includes('length') || errorMsg.includes('too long')) {
+        return NextResponse.json({ error: '📏 歌词太长了，请简化后重试' }, { status: 500 });
+      }
+      
+      return NextResponse.json({ error: `❌ 生成失败: ${errorMsg || '请重试'}` }, { status: 500 });
     }
 
     const audioUrl = data.data?.audio;
 
     if (!audioUrl) {
       console.error('No audio URL in response:', data);
-      return NextResponse.json({ error: '获取音频失败，请重试' }, { status: 500 });
+      return NextResponse.json({ error: '🎵 未能获取音频文件，请重试' }, { status: 500 });
     }
 
     return NextResponse.json({ audioUrl });
