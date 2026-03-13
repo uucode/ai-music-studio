@@ -30,7 +30,7 @@ const MOODS: { name: Mood; desc: string; icon: string }[] = [
   { name: '治愈', desc: '温暖', icon: '✨' },
   { name: '放松', desc: '舒缓', icon: '🌿' },
   { name: '怀旧', desc: '回忆', icon: '📷' },
-  { name: '自由', desc: '无拘', icon: '🕊️' },
+  { name: '自由', desc: '无拘', icon: '🌊' },
   { name: '想念', desc: '思念', icon: '💭' },
 ];
 
