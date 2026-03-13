@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit } from '../../lib/rate-limit';
 
-const API_KEY = process.env.MINIMAX_API_KEY || 'sk-api-ohz6ii188v3p0oZxA5yfT1Y1BvvoaZtRH-xFH0ti938-NGit7Atd5DfxAPbc2qETLvP_wdIonCuKymCH-40VGSwcccIj7KxaNnZf1MkJ7k3lRnAPzSsWANc';
+const API_KEY = process.env.MINIMAX_API_KEY || '';
 
-// 心情 → 情感基调
 const MOOD_TONE: Record<string, string> = {
   '开心': '明亮、欢快、甜蜜',
   '难过': '低沉、细腻、疗伤',
@@ -15,10 +15,9 @@ const MOOD_TONE: Record<string, string> = {
   '放松': '舒缓、自在、慵懒',
   '怀旧': '回忆、时光、感慨',
   '自由': '奔放、开阔、无拘无束',
-  '想念': '思念、等待、牵挂'
+  '想念': '思念、等待、牵挂',
 };
 
-// 星座 → 意象氛围
 const CONSTELLATION_VIBE: Record<string, string> = {
   '白羊座': '火焰、冲动、热情、直来直去',
   '金牛座': '踏实、温柔、慢节奏、享受',
@@ -31,10 +30,9 @@ const CONSTELLATION_VIBE: Record<string, string> = {
   '射手座': '自由、远方、冒险、坦率',
   '摩羯座': '坚韧、责任、理性、稳重',
   '水瓶座': '独特、创新、抽离、叛逆',
-  '双鱼座': '梦幻、浪漫、敏感、海洋'
+  '双鱼座': '梦幻、浪漫、敏感、海洋',
 };
 
-// MBTI → 表达风格
 const MBTI_STYLE: Record<string, string> = {
   'INTJ': '理性、深沉、内敛、战略',
   'INTP': '逻辑、抽离、思考、独特',
@@ -51,7 +49,7 @@ const MBTI_STYLE: Record<string, string> = {
   'ISTP': '冷静、行动、技艺、寡言',
   'ISFP': '美感、细腻、感知、柔软',
   'ESTP': '冒险、刺激、即兴、魄力',
-  'ESFP': '活力、热情、表现、即兴'
+  'ESFP': '活力、热情、表现、即兴',
 };
 
 const STYLE_PROMPTS: Record<string, string> = {
@@ -67,13 +65,28 @@ const STYLE_PROMPTS: Record<string, string> = {
   '治愈': '治愈系，温暖，疗愈，温柔',
 };
 
+const MAX_PROMPT_LENGTH = 2000;
+
 export async function POST(req: NextRequest) {
   try {
+    if (!API_KEY) {
+      return NextResponse.json({ error: '服务配置错误，请联系管理员' }, { status: 500 });
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { ok } = checkRateLimit(ip, 10, 60_000);
+    if (!ok) {
+      return NextResponse.json({ error: '请求过于频繁，请稍后再试' }, { status: 429 });
+    }
+
     const { prompt, style, mood, constellation, mbti } = await req.json();
+
+    if (typeof prompt === 'string' && prompt.length > MAX_PROMPT_LENGTH) {
+      return NextResponse.json({ error: '输入内容过长，请精简后重试' }, { status: 400 });
+    }
 
     const stylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS['流行'];
 
-    // Build influencing factors
     let toneGuide = '';
     let vibeGuide = '';
     let styleGuide = '';
@@ -81,18 +94,16 @@ export async function POST(req: NextRequest) {
     if (mood && MOOD_TONE[mood]) {
       toneGuide = `情感基调：${MOOD_TONE[mood]}，`;
     }
-
     if (constellation && CONSTELLATION_VIBE[constellation]) {
       vibeGuide = `意象氛围：${CONSTELLATION_VIBE[constellation]}，`;
     }
-
     if (mbti && MBTI_STYLE[mbti]) {
       styleGuide = `表达风格：${MBTI_STYLE[mbti]}，`;
     }
 
     let userInput = '';
-    if (prompt && prompt.trim()) {
-      userInput = `\n用户想表达：${prompt}`;
+    if (prompt && typeof prompt === 'string' && prompt.trim()) {
+      userInput = `\n用户想表达：${prompt.trim()}`;
     }
 
     const lyricsPrompt = `创作歌词。
@@ -115,57 +126,51 @@ ${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${API_KEY}`
+        'Authorization': `Bearer ${API_KEY}`,
       },
       body: JSON.stringify({
         model: 'MiniMax-M2.1',
-        messages: [
-          { role: 'user', content: lyricsPrompt }
-        ]
-      })
+        messages: [{ role: 'user', content: lyricsPrompt }],
+      }),
     });
 
+    if (!response.ok) {
+      return NextResponse.json(
+        { error: `API 请求失败 (${response.status})，请重试` },
+        { status: 502 },
+      );
+    }
+
     const data = await response.json();
-    
-    console.log('Lyrics API response:', JSON.stringify(data));
 
     if (data.base_resp?.status_code !== 0) {
-      const errorMsg = data.base_resp?.status_msg || '';
-      
-      if (errorMsg.includes('quota') || errorMsg.includes('余额') || errorMsg.includes('insufficient') || errorMsg.includes('配额')) {
+      const msg = data.base_resp?.status_msg || '';
+
+      if (msg.includes('quota') || msg.includes('余额') || msg.includes('insufficient') || msg.includes('配额'))
         return NextResponse.json({ error: '⚠️ API配额不足，请稍后再试' }, { status: 500 });
-      }
-      if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
+      if (msg.includes('timeout') || msg.includes('超时'))
         return NextResponse.json({ error: '⏱️ 生成超时，请重试' }, { status: 500 });
-      }
-      
-      return NextResponse.json({ error: `❌ 歌词生成失败: ${errorMsg || '请重试'}` }, { status: 500 });
+
+      return NextResponse.json({ error: `❌ 歌词生成失败: ${msg || '请重试'}` }, { status: 500 });
     }
 
     const lyrics = data.choices?.[0]?.message?.content;
 
-    // Validate lyrics - be more lenient
     if (!lyrics || lyrics.trim().length < 10) {
-      console.error('Lyrics too short:', lyrics);
       return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
     }
 
-    // Just check it's mostly Chinese characters (at least 50%)
     const chineseChars = (lyrics.match(/[\u4e00-\u9fa5]/g) || []).length;
     if (chineseChars < lyrics.length * 0.3) {
-      console.error('Lyrics not enough Chinese:', lyrics);
       return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
     }
 
     return NextResponse.json({ lyrics });
   } catch (error: any) {
-    console.error('Lyrics generation error:', error);
-    
     let errorMessage = '服务器错误，请重试';
     if (error.message?.includes('fetch failed')) {
       errorMessage = '网络错误，请检查网络后重试';
     }
-    
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

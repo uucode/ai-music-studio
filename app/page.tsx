@@ -1,12 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import ReactMarkdown from 'react-markdown';
-
-type MusicStyle = 'R&B' | '流行' | '抒情' | '电子' | '民谣' | '国风' | '爵士' | '说唱' | '摇滚' | '治愈';
-type Mood = '开心' | '难过' | '暧昧' | '失落' | '平静' | '浪漫' | '孤独' | '治愈' | '放松' | '怀旧' | '自由' | '想念';
-type MBTI = 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP' | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP' | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ' | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP';
-type Constellation = '白羊座' | '金牛座' | '双子座' | '巨蟹座' | '狮子座' | '处女座' | '天秤座' | '天蝎座' | '射手座' | '摩羯座' | '水瓶座' | '双鱼座';
+import { useState, useEffect, useRef } from 'react';
+import { useToast } from './components/Toast';
+import { DonateModal } from './components/DonateModal';
+import { LyricsRenderer } from './components/LyricsRenderer';
+import type { MusicStyle, Mood, MBTI, Constellation } from './lib/types';
 
 const MUSIC_STYLES: { name: MusicStyle; desc: string; icon: string }[] = [
   { name: 'R&B', desc: '节奏蓝调', icon: '🎤' },
@@ -39,10 +37,32 @@ const MOODS: { name: Mood; desc: string; icon: string }[] = [
 const MBTI_LIST: MBTI[] = ['INTJ', 'INTP', 'ENTJ', 'ENTP', 'INFJ', 'INFP', 'ENFJ', 'ENFP', 'ISTJ', 'ISFJ', 'ESTJ', 'ESFJ', 'ISTP', 'ISFP', 'ESTP', 'ESFP'];
 const CONSTELLATIONS: Constellation[] = ['白羊座', '金牛座', '双子座', '巨蟹座', '狮子座', '处女座', '天秤座', '天蝎座', '射手座', '摩羯座', '水瓶座', '双鱼座'];
 
+const STYLE_TITLES: Record<string, string[]> = {
+  'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后'],
+  '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒'],
+  '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过'],
+  '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨'],
+  '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路'],
+  '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖'],
+  '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆'],
+  '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '态度'],
+  '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血'],
+  '治愈': ['温暖', 'Sunshine', '拥抱', '光', '治愈', '心安'],
+};
+
+function escapeHtml(str: string) {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 export default function Home() {
+  const { toast } = useToast();
   const [step, setStep] = useState<'input' | 'result'>('input');
-  
-  // Input states
+  const generatingRef = useRef(false);
+
   const [mbti, setMbti] = useState<MBTI | ''>('');
   const [constellation, setConstellation] = useState<Constellation | ''>('');
   const [mood, setMood] = useState<Mood | ''>('');
@@ -53,32 +73,27 @@ export default function Home() {
   const [showShare, setShowShare] = useState(false);
   const [hasShared, setHasShared] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
-  
-  // Handle share link from URL
+
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const shareData = params.get('share');
-      if (shareData) {
-        try {
-          const song = JSON.parse(decodeURIComponent(shareData));
-          const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
-          const exists = shares.some((s: any) => s.title === song.title && s.lyrics === song.lyrics);
-          if (!exists) {
-            shares.unshift(song);
-            localStorage.setItem('musicShares', JSON.stringify(shares));
-            alert('收到一首分享的歌曲！');
-          }
-          // Clean URL
-          window.history.replaceState({}, '', window.location.pathname);
-        } catch (e) {
-          console.error('Invalid share link', e);
+    const params = new URLSearchParams(window.location.search);
+    const shareData = params.get('share');
+    if (shareData) {
+      try {
+        const song = JSON.parse(decodeURIComponent(shareData));
+        const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
+        const exists = shares.some((s: any) => s.title === song.title && s.lyrics === song.lyrics);
+        if (!exists) {
+          shares.unshift(song);
+          localStorage.setItem('musicShares', JSON.stringify(shares));
+          toast('收到一首分享的歌曲！', 'info');
         }
+        window.history.replaceState({}, '', window.location.pathname);
+      } catch {
+        // invalid share link, ignore
       }
     }
-  }, []);
-  
-  // Output
+  }, [toast]);
+
   const [lyrics, setLyrics] = useState('');
   const [songTitle, setSongTitle] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -88,91 +103,54 @@ export default function Home() {
 
   const generate = async () => {
     setGenerating(true);
+    generatingRef.current = true;
     setGeneratingStage('lyrics');
     setError('');
-    
-    // Set timeout - 3 minutes max
-    let timeout: NodeJS.Timeout;
-    
-    const runWithTimeout = () => {
-      timeout = setTimeout(() => {
-        if (generating) {
-          setError('生成时间较长，请检查网络后重试');
-          setGenerating(false);
-        }
-      }, 180000);
-    };
-    
-    runWithTimeout();
-    
+
+    const timeoutId = setTimeout(() => {
+      if (generatingRef.current) {
+        setError('生成时间较长，请检查网络后重试');
+        setGenerating(false);
+        generatingRef.current = false;
+      }
+    }, 180_000);
+
     try {
-      // Stage 1: Generate lyrics
       setGeneratingStage('lyrics');
       const res = await fetch('/api/lyrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           prompt: keyword || customText,
           style: selectedStyle,
           mood,
           constellation,
-          mbti
-        })
+          mbti,
+        }),
       });
-      
+
       if (!res.ok) {
-        throw new Error('歌词生成失败，请重试');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || '歌词生成失败，请重试');
       }
-      
+
       const data = await res.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
+      if (data.error) throw new Error(data.error);
+
       if (data.lyrics) {
-        // Store lyrics in a variable for immediate use
         const generatedLyrics = data.lyrics;
         setLyrics(generatedLyrics);
-        
-        // Try to extract title from lyrics first
+
         const titleMatch = data.lyrics.match(/《([^》]+)》/);
         let generatedTitle = '';
-        
         if (titleMatch) {
           generatedTitle = titleMatch[1];
         } else {
-          // Generate title based on user's keyword/input + mood for more variety
-          const keywordBase = keyword?.trim() || customText?.trim() || '';
-          const moodBase = mood || '';
-          const styleBase = selectedStyle || '流行';
-          
-          // Create seed from inputs for variety
-          const seed = (keywordBase + moodBase + styleBase + Date.now()).split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-          
-          // Extended title lists
-          const titlesByStyle: Record<string, string[]> = {
-            'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后', '深海', '第六感', '暖光', '即兴', '贪恋', '沉醉', '流转'],
-            '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒', '错过', '重来', '痕迹', '倒影', '答案', '小事', '平凡'],
-            '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过', '假设', '不过', '终于', '不期', '然后', '可能', '其实'],
-            '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨', '虚拟', '失控', '反射', '迭代', '震荡', '信号', '零点', '重启'],
-            '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路', '山丘', '候鸟', '纸飞机', '老地方', '时光机', '归途', '浅唱'],
-            '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖', '青花', '离人', '戏腔', '芳草', '相思', '渡口', '落花', '蒹葭'],
-            '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆', '迷雾', '威士忌', '暗潮', '慢镜头', '雨后'],
-            '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '炸裂', '突破', '硬核', '本色', '燥', '押', '麦克风'],
-            '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血', '烽火', '碎片', '嘶吼', '信仰', '星火'],
-            '治愈': ['温暖', 'Sunshine', '拥抱', '光', '治愈', '心安', '栖息', '小幸运', '柔软', '浅光', '慢时光', '归属']
-          };
-          
-          const styleTitles = titlesByStyle[styleBase] || titlesByStyle['流行'];
-          // Use pseudo-random based on seed
-          const titleIndex = Math.floor((seed * 9301 + 49297) % 233280) % styleTitles.length;
-          generatedTitle = styleTitles[titleIndex] || styleTitles[0];
+          const options = STYLE_TITLES[selectedStyle] || STYLE_TITLES['流行'];
+          generatedTitle = options[Math.floor(Date.now() % options.length)] || options[0];
         }
-        
         setSongTitle(generatedTitle);
-        
-        // Stage 2: Generate music
+
         setGeneratingStage('music');
         const musicRes = await fetch('/api/generate', {
           method: 'POST',
@@ -180,48 +158,44 @@ export default function Home() {
           body: JSON.stringify({
             lyrics: data.lyrics,
             style: selectedStyle,
-            title: mbti || mood || keyword || '随心之作'
-          })
+            title: mbti || mood || keyword || '随心之作',
+          }),
         });
-        
+
         if (!musicRes.ok) {
-          throw new Error('歌曲生成失败，请重试');
+          const errData = await musicRes.json().catch(() => ({}));
+          throw new Error(errData.error || '歌曲生成失败，请重试');
         }
-        
+
         const musicData = await musicRes.json();
-        
-        if (musicData.error) {
-          throw new Error(musicData.error);
-        }
-        
+        if (musicData.error) throw new Error(musicData.error);
+
         if (musicData.audioUrl) {
           setAudioUrl(musicData.audioUrl);
           setGeneratingStage('done');
           setStep('result');
-          
-          // Save to mySongs - use generatedLyrics directly
+
           const finalTitle = generatedTitle || `${selectedStyle}之歌`;
-          const mySongData = {
+          const mySongs = JSON.parse(localStorage.getItem('mySongs') || '[]');
+          mySongs.unshift({
             title: finalTitle,
-            lyrics: generatedLyrics || lyrics,
+            lyrics: generatedLyrics,
             audioUrl: musicData.audioUrl,
             style: selectedStyle,
-            createdAt: new Date().toISOString()
-          };
-          const mySongs = JSON.parse(localStorage.getItem('mySongs') || '[]');
-          mySongs.unshift(mySongData);
+            createdAt: new Date().toISOString(),
+          });
           localStorage.setItem('mySongs', JSON.stringify(mySongs));
         } else {
           throw new Error('获取音频失败');
         }
       }
     } catch (err: any) {
-      console.error(err);
       setError(err.message || '生成失败，请检查网络后重试');
       setStep('input');
     } finally {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
       setGenerating(false);
+      generatingRef.current = false;
     }
   };
 
@@ -238,6 +212,105 @@ export default function Home() {
     setLyrics('');
     setSongTitle('');
     setAudioUrl('');
+  };
+
+  const downloadSong = async () => {
+    try {
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = songTitle ? `《${songTitle}》.mp3` : 'AI歌曲.mp3';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch {
+      window.open(audioUrl, '_blank');
+    }
+  };
+
+  const saveLyricsImage = async () => {
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+
+      const container = document.createElement('div');
+      container.style.cssText = `
+        background: linear-gradient(135deg, #1e1b4b, #4c1d95, #be185d);
+        padding: 40px;
+        width: 600px;
+        font-family: system-ui, -apple-system, sans-serif;
+        color: white;
+      `;
+
+      const title = document.createElement('h2');
+      title.style.cssText = 'text-align:center;margin-bottom:20px;font-size:28px;';
+      title.textContent = `《${songTitle || '随心音乐'}》`;
+      container.appendChild(title);
+
+      const body = document.createElement('div');
+      body.style.cssText = 'white-space:pre-wrap;line-height:2;font-size:16px;color:#e9d5ff;';
+      lyrics.split('\n').forEach(line => {
+        const tagMatch = line.match(/【.*?】/);
+        if (tagMatch) {
+          const br = document.createElement('br');
+          body.appendChild(br);
+          const strong = document.createElement('strong');
+          strong.style.color = '#f9a8d4';
+          strong.textContent = tagMatch[0];
+          body.appendChild(strong);
+          const rest = line.replace(tagMatch[0], '');
+          if (rest) body.appendChild(document.createTextNode(rest));
+          body.appendChild(document.createElement('br'));
+        } else {
+          body.appendChild(document.createTextNode(line + '\n'));
+        }
+      });
+      container.appendChild(body);
+
+      const footer = document.createElement('div');
+      footer.style.cssText = 'text-align:center;margin-top:30px;font-size:12px;color:rgba(255,255,255,0.3);';
+      footer.textContent = 'Powered by Katherine AI-Music-Studio ✨';
+      container.appendChild(footer);
+
+      document.body.appendChild(container);
+      const canvas = await html2canvas(container);
+      document.body.removeChild(container);
+
+      const link = document.createElement('a');
+      link.download = songTitle ? `《${songTitle}》歌词.png` : '歌词.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch {
+      toast('保存失败，请重试', 'error');
+    }
+  };
+
+  const handleShare = async () => {
+    const shareData = {
+      title: songTitle,
+      lyrics,
+      audioUrl,
+      style: selectedStyle,
+      nickname: nickname || '匿名用户',
+      createdAt: new Date().toISOString(),
+    };
+    const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
+    shares.unshift(shareData);
+    localStorage.setItem('musicShares', JSON.stringify(shares));
+
+    const shareLink = `${window.location.origin}/?share=${encodeURIComponent(JSON.stringify(shareData))}`;
+    try {
+      await navigator.clipboard.writeText(shareLink);
+      toast('已分享到社区！链接已复制到剪贴板');
+    } catch {
+      toast('已分享到社区！', 'info');
+    }
+
+    setShowShare(false);
+    setNickname('');
+    setHasShared(true);
   };
 
   return (
@@ -264,12 +337,11 @@ export default function Home() {
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <span>✨</span> 快速选择
               </h3>
-              
-              {/* MBTI */}
+
               <div className="mb-4">
                 <p className="text-sm text-purple-200 mb-2">你的 MBTI</p>
                 <div className="flex flex-wrap gap-2">
-                  {MBTI_LIST.map((m) => (
+                  {MBTI_LIST.map(m => (
                     <button
                       key={m}
                       onClick={() => setMbti(mbti === m ? '' : m)}
@@ -282,12 +354,11 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              
-              {/* 星座 */}
+
               <div className="mb-4">
                 <p className="text-sm text-purple-200 mb-2">你的星座</p>
                 <div className="flex flex-wrap gap-2">
-                  {CONSTELLATIONS.map((c) => (
+                  {CONSTELLATIONS.map(c => (
                     <button
                       key={c}
                       onClick={() => setConstellation(constellation === c ? '' : c)}
@@ -300,12 +371,11 @@ export default function Home() {
                   ))}
                 </div>
               </div>
-              
-              {/* 心情 */}
+
               <div>
                 <p className="text-sm text-purple-200 mb-2">今天的心情</p>
                 <div className="flex flex-wrap gap-2">
-                  {MOODS.map((m) => (
+                  {MOODS.map(m => (
                     <button
                       key={m.name}
                       onClick={() => setMood(mood === m.name ? '' : m.name)}
@@ -325,18 +395,16 @@ export default function Home() {
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <span>💭</span> 自定义创作
               </h3>
-              
               <input
                 type="text"
                 value={keyword}
-                onChange={(e) => setKeyword(e.target.value)}
+                onChange={e => setKeyword(e.target.value)}
                 placeholder="或者输入任意关键词..."
                 className="w-full px-4 py-3 bg-white/10 rounded-xl placeholder-white/50 outline-none focus:ring-2 focus:ring-pink-400 mb-4"
               />
-              
               <textarea
                 value={customText}
-                onChange={(e) => setCustomText(e.target.value)}
+                onChange={e => setCustomText(e.target.value)}
                 placeholder="或者随便写点什么..."
                 rows={3}
                 className="w-full px-4 py-3 bg-white/10 rounded-xl placeholder-white/50 outline-none focus:ring-2 focus:ring-pink-400 resize-none"
@@ -349,13 +417,13 @@ export default function Home() {
                 <span>🎼</span> 选择曲风
               </h3>
               <div className="grid grid-cols-4 gap-3">
-                {MUSIC_STYLES.map((s) => (
+                {MUSIC_STYLES.map(s => (
                   <button
                     key={s.name}
                     onClick={() => setSelectedStyle(s.name)}
                     className={`p-3 rounded-xl text-center transition ${
-                      selectedStyle === s.name 
-                        ? 'bg-pink-500' 
+                      selectedStyle === s.name
+                        ? 'bg-pink-500'
                         : 'bg-white/10 hover:bg-white/20'
                     }`}
                   >
@@ -374,10 +442,10 @@ export default function Home() {
                   <span>🎵 AI 作曲</span>
                 </div>
                 <div className="h-3 bg-white/20 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-pink-500 to-purple-500 transition-all duration-500"
-                    style={{ 
-                      width: generatingStage === 'lyrics' ? '30%' : generatingStage === 'music' ? '70%' : '100%' 
+                    style={{
+                      width: generatingStage === 'lyrics' ? '30%' : generatingStage === 'music' ? '70%' : '100%',
                     }}
                   />
                 </div>
@@ -428,19 +496,7 @@ export default function Home() {
               <h3 className="text-lg font-semibold mb-4">
                 {songTitle ? `🎤 《${songTitle}》` : '🎤 你的歌词'}
               </h3>
-              <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">
-                <ReactMarkdown
-                  components={{
-                    p: ({node, ...props}) => <p className="text-purple-100 leading-relaxed mb-2" {...props} />,
-                    h1: ({node, ...props}) => <h1 className="text-xl font-bold text-pink-300 mt-6 mb-3" {...props} />,
-                    h2: ({node, ...props}) => <h2 className="text-lg font-bold text-pink-300 mt-5 mb-2" {...props} />,
-                    h3: ({node, ...props}) => <h3 className="text-md font-bold text-pink-200 mt-4 mb-2" {...props} />,
-                    br: ({node, ...props}) => <br {...props} />,
-                  }}
-                >
-                  {lyrics}
-                </ReactMarkdown>
-              </div>
+              <LyricsRenderer lyrics={lyrics} />
             </div>
 
             {audioUrl && (
@@ -451,8 +507,7 @@ export default function Home() {
                 <audio controls className="w-full mb-4">
                   <source src={audioUrl} type="audio/mpeg" />
                 </audio>
-                
-                {/* Initial buttons */}
+
                 {!showShare ? (
                   <div className="flex flex-col sm:flex-row justify-center gap-3">
                     <button
@@ -462,109 +517,36 @@ export default function Home() {
                       📤 分享到社区
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          const response = await fetch(audioUrl);
-                          const blob = await response.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const a = document.createElement('a');
-                          a.href = url;
-                          a.download = songTitle ? `《${songTitle}》.mp3` : 'AI歌曲.mp3';
-                          document.body.appendChild(a);
-                          a.click();
-                          window.URL.revokeObjectURL(url);
-                          document.body.removeChild(a);
-                        } catch (e) {
-                          console.error('下载失败', e);
-                          window.open(audioUrl, '_blank');
-                        }
-                      }}
+                      onClick={downloadSong}
                       className="inline-block px-6 py-2 bg-pink-500 hover:bg-pink-600 rounded-xl transition"
                     >
                       ⬇️ 下载歌曲
                     </button>
                     <button
-                      onClick={async () => {
-                        try {
-                          const html2canvas = (await import('html2canvas')).default;
-                          
-                          // Create a container for lyrics
-                          const container = document.createElement('div');
-                          container.style.cssText = `
-                            background: linear-gradient(135deg, #1e1b4b, #4c1d95, #be185d);
-                            padding: 40px;
-                            width: 600px;
-                            font-family: system-ui, -apple-system, sans-serif;
-                            color: white;
-                          `;
-                          
-                          container.innerHTML = `
-                            <h2 style="text-align: center; margin-bottom: 20px; font-size: 28px;">《${songTitle || '随心音乐'}》</h2>
-                            <div style="white-space: pre-wrap; line-height: 2; font-size: 16px; color: #e9d5ff;">${lyrics.replace(/【.*?】/g, '<br><br><strong style="color: #f9a8d4;">$&</strong><br>')}</div>
-                            <div style="text-align: center; margin-top: 30px; font-size: 12px; color: rgba(255,255,255,0.3);">Powered by Katherine AI-Music-Studio ✨</div>
-                          `;
-                          
-                          document.body.appendChild(container);
-                          const canvas = await html2canvas(container);
-                          document.body.removeChild(container);
-                          
-                          const link = document.createElement('a');
-                          link.download = songTitle ? `《${songTitle}》歌词.png` : '歌词.png';
-                          link.href = canvas.toDataURL('image/png');
-                          link.click();
-                        } catch (e) {
-                          console.error('保存歌词图片失败', e);
-                          alert('保存失败，请重试');
-                        }
-                      }}
+                      onClick={saveLyricsImage}
                       className="inline-block px-6 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-xl transition"
                     >
                       🖼️ 保存歌词
                     </button>
                   </div>
                 ) : (
-                  /* Share input mode */
                   <div className="space-y-3">
                     <input
                       type="text"
                       placeholder="输入你的昵称（分享时显示）"
                       value={nickname}
-                      onChange={(e) => setNickname(e.target.value)}
+                      onChange={e => setNickname(e.target.value)}
                       className="w-full px-4 py-2 bg-white/10 rounded-xl placeholder-white/50 outline-none focus:ring-2 focus:ring-pink-400 text-center"
                     />
                     <div className="flex flex-col sm:flex-row justify-center gap-3">
                       <button
-                        onClick={() => {
-                          setShowShare(false);
-                          setNickname('');
-                        }}
+                        onClick={() => { setShowShare(false); setNickname(''); }}
                         className="inline-block px-6 py-2 bg-white/10 hover:bg-white/20 rounded-xl transition"
                       >
                         取消
                       </button>
                       <button
-                        onClick={async () => {
-                          const shareData = {
-                            title: songTitle,
-                            lyrics: lyrics,
-                            audioUrl: audioUrl,
-                            style: selectedStyle,
-                            nickname: nickname || '匿名用户',
-                            createdAt: new Date().toISOString()
-                          };
-                          const shares = JSON.parse(localStorage.getItem('musicShares') || '[]');
-                          shares.unshift(shareData);
-                          localStorage.setItem('musicShares', JSON.stringify(shares));
-                          
-                          // Generate share link
-                          const shareLink = `${window.location.origin}/?share=${encodeURIComponent(JSON.stringify(shareData))}`;
-                          await navigator.clipboard.writeText(shareLink);
-                          
-                          setShowShare(false);
-                          setNickname('');
-                          setHasShared(true);
-                          alert('已分享到社区！链接已复制到剪贴板，快分享给朋友吧！');
-                        }}
+                        onClick={handleShare}
                         className="inline-block px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition"
                       >
                         ✓ 确认分享
@@ -585,58 +567,20 @@ export default function Home() {
         )}
       </div>
 
-      {/* Powered by */}
+      {/* Footer */}
       <div className="text-center mt-8 text-white/20 text-xs">
         Powered by Katherine AI-Music-Studio ✨
       </div>
-      
-      {/* Donation link */}
-      <div className="text-center mt-4">
-        <button 
+      <div className="text-center mt-4 pb-6">
+        <button
           onClick={() => setShowDonate(true)}
           className="text-white/30 text-xs hover:text-pink-300 underline"
         >
           ☕ 请喝咖啡
         </button>
       </div>
-      
-      {/* Donation Modal */}
-      {showDonate && (
-        <div 
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowDonate(false)}
-        >
-          <div 
-            className="bg-white rounded-2xl p-4 max-w-sm"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-center text-gray-700 font-bold mb-3">
-              选择支付方式
-            </p>
-            <div className="flex gap-2">
-                <img 
-                  src="/wechat-pay.jpg" 
-                  alt="微信收款码" 
-                  className="w-1/2 rounded-lg"
-                />
-                <img 
-                  src="/alipay.jpg" 
-                  alt="支付宝收款码" 
-                  className="w-1/2 rounded-lg"
-                />
-              </div>
-            <p className="text-center text-gray-600 text-sm mt-3">
-              感谢支持！☕
-            </p>
-            <button
-              onClick={() => setShowDonate(false)}
-              className="w-full mt-3 py-2 bg-gray-200 hover:bg-gray-300 rounded-xl text-gray-700"
-            >
-              关闭
-            </button>
-          </div>
-        </div>
-      )}
+
+      {showDonate && <DonateModal onClose={() => setShowDonate(false)} />}
     </main>
   );
 }
