@@ -137,9 +137,16 @@ ${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
 
     const lyrics = data.choices?.[0]?.message?.content;
 
-    if (!lyrics) {
-      console.error('No lyrics in response:', data);
+    // Validate lyrics
+    if (!lyrics || lyrics.trim().length < 20) {
+      console.error('Lyrics too short or empty:', lyrics);
       return NextResponse.json({ error: '歌词生成失败，请重试' }, { status: 500 });
+    }
+
+    // Check lyrics has proper structure
+    if (!lyrics.includes('【') && !lyrics.includes('Verse') && !lyrics.includes('主歌') && !lyrics.includes('副歌') && !lyrics.includes('Chorus')) {
+      console.error('Lyrics format invalid:', lyrics);
+      return NextResponse.json({ error: '歌词格式不正确，请重试' }, { status: 500 });
     }
 
     return NextResponse.json({ lyrics });
