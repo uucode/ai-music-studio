@@ -175,6 +175,18 @@ export default function Home() {
           setAudioUrl(musicData.audioUrl);
           setGeneratingStage('done');
           setStep('result');
+          
+          // Save to mySongs
+          const mySongData = {
+            title: songTitle,
+            lyrics: lyrics,
+            audioUrl: musicData.audioUrl,
+            style: selectedStyle,
+            createdAt: new Date().toISOString()
+          };
+          const mySongs = JSON.parse(localStorage.getItem('mySongs') || '[]');
+          mySongs.unshift(mySongData);
+          localStorage.setItem('mySongs', JSON.stringify(mySongs));
         } else {
           throw new Error('获取音频失败');
         }
@@ -211,9 +223,14 @@ export default function Home() {
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold mb-2">🎵 随心音乐</h1>
           <p className="text-purple-200 text-lg">输入任意关键词，让 AI 为你创作一首歌</p>
-          <a href="/community" className="inline-block mt-3 text-sm text-pink-300 hover:text-pink-200 underline">
-            🎶 查看音乐社区
-          </a>
+          <div className="flex justify-center gap-4 mt-3">
+            <a href="/community" className="text-sm text-pink-300 hover:text-pink-200 underline">
+              🎶 查看音乐社区
+            </a>
+            <a href="/my-songs" className="text-sm text-pink-300 hover:text-pink-200 underline">
+              🎤 我的创作
+            </a>
+          </div>
         </div>
 
         {step === 'input' ? (
