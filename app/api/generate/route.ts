@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
 
     const stylePrompt = stylePrompts[style] || stylePrompts['流行'];
 
-    // Add timeout controller - increased to 5 minutes for music generation
+    // Add timeout controller - 10 minutes for music generation
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
+    const timeoutId = setTimeout(() => controller.abort(), 600000); // 10 min timeout
 
     const response = await fetch('https://api.minimax.chat/v1/music_generation', {
       method: 'POST',
