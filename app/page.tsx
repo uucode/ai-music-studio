@@ -133,25 +133,32 @@ export default function Home() {
       if (data.lyrics) {
         setLyrics(data.lyrics);
         
-        // Generate a title based on mood/style
-        const titles = {
-          'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后'],
-          '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒'],
-          '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过'],
-          '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨'],
-          '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路'],
-          '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖'],
-          '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆'],
-          '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '态度'],
-          '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血'],
-          '治愈': ['温暖', ' Sunshine', '拥抱', '光', '治愈', '心安']
-        };
-        const options = titles[selectedStyle as keyof typeof titles] || titles['流行'];
+        // Try to extract title from lyrics first
+        const titleMatch = data.lyrics.match(/《([^》]+)》/);
+        let generatedTitle = '';
         
-        // Use time-based random for more variety
-        const randomIndex = Math.floor(Date.now() % options.length);
-        const selectedTitle = options[randomIndex] || options[0];
-        setSongTitle(selectedTitle);
+        if (titleMatch) {
+          generatedTitle = titleMatch[1];
+        } else {
+          // Or generate based on style
+          const titles = {
+            'R&B': ['夜的风', 'Groove', '暧昧', '心跳', '微醺', '频率', '霓虹', '午后'],
+            '流行': ['时光', '记忆', '遇见', '守护', '彩虹', '经过', '晴天', '永恒'],
+            '抒情': ['如果有如果', '后来', '平凡的歌', '秋意', '思念', '错过'],
+            '电子': ['未来', '霓虹', '梦境', '脉冲', '星河', '凌晨'],
+            '民谣': ['远方', '故乡', '路上的歌', '木吉他', '简单', '平凡路'],
+            '国风': ['烟雨', '长安', '古道', '春悸', '江南', '西湖'],
+            '爵士': ['午夜', '蓝调', '时光流转', '萨克斯', '浪漫', '摇摆'],
+            '说唱': ['节奏', '街头', '态度', 'Flow', 'real', '态度'],
+            '摇滚': ['呐喊', '光', '不妥协', '风暴', '反抗', '热血'],
+            '治愈': ['温暖', 'Sunshine', '拥抱', '光', '治愈', '心安']
+          };
+          const options = titles[selectedStyle as keyof typeof titles] || titles['流行'];
+          const randomIndex = Math.floor(Date.now() % options.length);
+          generatedTitle = options[randomIndex] || options[0];
+        }
+        
+        setSongTitle(generatedTitle);
         
         // Stage 2: Generate music
         setGeneratingStage('music');
