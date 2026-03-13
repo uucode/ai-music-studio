@@ -383,10 +383,13 @@ export default function Home() {
               className="w-full py-5 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:from-pink-600 hover:via-purple-600 hover:to-indigo-600 rounded-2xl text-xl font-bold disabled:opacity-50 transition transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-purple-500/30"
             >
               {generating ? (
-                <span className="flex items-center justify-center gap-2">
-                  {generatingStage === 'lyrics' && '✍️ AI 写词中... (约60秒)'}
-                  {generatingStage === 'music' && '🎵 AI 作曲中... (约180秒)'}
+                <span className="flex flex-col items-center justify-center gap-1">
+                  {generatingStage === 'lyrics' && '✍️ AI 写词中...'}
+                  {generatingStage === 'music' && '🎵 AI 作曲中...'}
                   {generatingStage === 'done' && '🎉 完成！'}
+                  {generatingStage !== 'done' && (
+                    <span className="text-xs font-normal opacity-70">请保持页面开启，创作完成后自动保存</span>
+                  )}
                 </span>
               ) : (
                 '🎵 开始创作'
