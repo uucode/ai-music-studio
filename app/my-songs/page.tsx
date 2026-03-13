@@ -210,17 +210,19 @@ export default function MySongs() {
                   )}
 
                   {/* Expand Hint */}
-                  <div className="mt-2 text-center text-white/40 text-sm">
-                    {expandedId === index ? '▲ 点击收起' : '▼ 点击查看歌词'}
+                  <div className="mt-2 ml-4 flex items-center justify-between">
+                    <span className="text-white/30 text-xs">
+                      {expandedId === index ? '▲ 点击收起' : '▼ 点击查看歌词'}
+                    </span>
                   </div>
                 </div>
 
                 {/* Expanded Lyrics Section */}
                 {expandedId === index && (
-                  <div className="bg-black/30 p-4 border-t border-white/10">
-                    <div className="flex justify-end gap-2 mb-3">
-                      {song.lyrics && (
-                        <>
+                  <div className="mt-2 bg-black/20 rounded-2xl p-4">
+                    {song.lyrics ? (
+                      <>
+                        <div className="flex justify-end gap-2 mb-3">
                           <button
                             onClick={() => saveLyricsAsImage(song)}
                             className="text-xs px-3 py-1.5 bg-purple-500/40 hover:bg-purple-500/60 rounded-lg transition"
@@ -233,18 +235,23 @@ export default function MySongs() {
                           >
                             📋 复制歌词
                           </button>
-                        </>
-                      )}
-                    </div>
-                    
-                    {song.lyrics ? (
-                      <div className="whitespace-pre-wrap text-purple-100 text-sm leading-relaxed bg-black/20 p-3 rounded-lg max-h-96 overflow-y-auto">
-                        {song.lyrics}
-                      </div>
+                        </div>
+                        <div className="prose prose-invert prose-sm max-w-none whitespace-pre-wrap">
+                          <ReactMarkdown
+                            components={{
+                              p: ({node, ...props}) => <p className="text-purple-100 leading-relaxed mb-3" {...props} />,
+                              h1: ({node, ...props}) => <h1 className="text-lg font-bold text-pink-300 mt-4 mb-2" {...props} />,
+                              h2: ({node, ...props}) => <h2 className="text-md font-bold text-pink-300 mt-3 mb-2" {...props} />,
+                              h3: ({node, ...props}) => <h3 className="text-sm font-bold text-pink-200 mt-3 mb-1" {...props} />,
+                            }}
+                          >
+                            {song.lyrics}
+                          </ReactMarkdown>
+                        </div>
+                      </>
                     ) : (
                       <div className="text-center py-6 text-white/40">
                         <p>暂无歌词</p>
-                        <p className="text-xs mt-2">这首歌曲创作时未能保存歌词</p>
                       </div>
                     )}
                   </div>
