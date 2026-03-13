@@ -131,7 +131,9 @@ export default function Home() {
       }
       
       if (data.lyrics) {
-        setLyrics(data.lyrics);
+        // Store lyrics in a variable for immediate use
+        const generatedLyrics = data.lyrics;
+        setLyrics(generatedLyrics);
         
         // Try to extract title from lyrics first
         const titleMatch = data.lyrics.match(/《([^》]+)》/);
@@ -187,11 +189,11 @@ export default function Home() {
           setGeneratingStage('done');
           setStep('result');
           
-          // Save to mySongs - use generatedTitle directly (state might not be updated yet)
+          // Save to mySongs - use generatedLyrics directly
           const finalTitle = generatedTitle || `${selectedStyle}之歌`;
           const mySongData = {
             title: finalTitle,
-            lyrics: lyrics,
+            lyrics: generatedLyrics || lyrics,
             audioUrl: musicData.audioUrl,
             style: selectedStyle,
             createdAt: new Date().toISOString()
