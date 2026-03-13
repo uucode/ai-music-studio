@@ -53,16 +53,16 @@ const MBTI_STYLE: Record<string, string> = {
 };
 
 const STYLE_PROMPTS: Record<string, string> = {
-  'R&B': 'R&B节奏，蓝调元素，律动感，女声，groove，性感慵懒',
-  '流行': '流行歌曲，旋律朗朗上口，编曲丰富',
-  '抒情': '抒情慢歌，钢琴和弦乐，温柔女声',
+  'R&B': 'R&B，节奏蓝调，律动感，groove',
+  '流行': '流行歌曲，旋律朗朗上口',
+  '抒情': '抒情慢歌，钢琴和弦乐',
   '电子': '电子合成，Synthwave，未来感',
-  '民谣': '木吉他，清新简单，民谣风格',
-  '国风': '中国风，古筝，琵琶，意境深远，含蓄优雅',
-  '爵士': '爵士乐，蓝调，萨克斯，优雅',
-  '说唱': '说唱，节奏感，rap，嘻哈',
-  '摇滚': '摇滚乐，吉他，失真，激烈',
-  '治愈': '治愈系，温暖，疗愈，温柔',
+  '民谣': '木吉他，清新简单，民谣',
+  '国风': '中国风，古筝琵琶，意境深远',
+  '爵士': '爵士乐，蓝调，萨克斯',
+  '说唱': 'Hip-hop，说唱，节奏感，rap',
+  '摇滚': '摇滚乐，电吉他，失真，激烈',
+  '治愈': '治愈系，温暖，疗愈',
 };
 
 const MAX_PROMPT_LENGTH = 2000;
@@ -86,41 +86,43 @@ export async function POST(req: NextRequest) {
     }
 
     const stylePrompt = STYLE_PROMPTS[style] || STYLE_PROMPTS['流行'];
+    const hasUserInput = prompt && typeof prompt === 'string' && prompt.trim().length > 0;
+    const userText = hasUserInput ? prompt.trim() : '';
 
-    let toneGuide = '';
-    let vibeGuide = '';
-    let styleGuide = '';
+    const contextParts: string[] = [];
+    if (mood && MOOD_TONE[mood]) contextParts.push(`情感基调：${MOOD_TONE[mood]}`);
+    if (constellation && CONSTELLATION_VIBE[constellation]) contextParts.push(`意象氛围：${CONSTELLATION_VIBE[constellation]}`);
+    if (mbti && MBTI_STYLE[mbti]) contextParts.push(`表达风格：${MBTI_STYLE[mbti]}`);
 
-    if (mood && MOOD_TONE[mood]) {
-      toneGuide = `情感基调：${MOOD_TONE[mood]}，`;
-    }
-    if (constellation && CONSTELLATION_VIBE[constellation]) {
-      vibeGuide = `意象氛围：${CONSTELLATION_VIBE[constellation]}，`;
-    }
-    if (mbti && MBTI_STYLE[mbti]) {
-      styleGuide = `表达风格：${MBTI_STYLE[mbti]}，`;
-    }
+    const contextLine = contextParts.length > 0 ? contextParts.join('；') + '\n' : '';
 
-    let userInput = '';
-    if (prompt && typeof prompt === 'string' && prompt.trim()) {
-      userInput = `\n用户想表达：${prompt.trim()}`;
-    }
+    let lyricsPrompt: string;
 
-    const lyricsPrompt = `创作歌词。
+    if (hasUserInput) {
+      lyricsPrompt = `创作指令：${userText}
 
-${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
+参考曲风：${stylePrompt}
+${contextLine}
+要求：
+- 严格按照用户的创作指令来写，如果指定了歌手风格/词人风格，必须深度模仿其用词习惯、意象选择、句式结构和韵脚特点
+- 语言：中文
+- 格式：用【Verse】【Pre-Chorus】【Chorus】【Bridge】【Outro】标注段落
+- 结构：2段Verse + 1段Chorus + 1段Bridge
+- 注意：歌词中不要出现星座、MBTI、心情这些字眼，用意象和情感自然表达
+- 直接输出歌词和标签，不要其他解释`;
+    } else {
+      lyricsPrompt = `创作一首${stylePrompt}风格的歌词。
 
+${contextLine}
 要求：
 - 语言：中文
-- 格式：用以下标签标注段落
-  - 【Verse】或【主歌】表示主歌
-  - 【Pre-Chorus】或【桥段】表示前副歌
-  - 【Chorus】或【副歌】表示副歌
-  - 【Bridge】表示桥段
-  - 【Outro】表示结尾
+- 格式：用【Verse】【Pre-Chorus】【Chorus】【Bridge】【Outro】标注段落
 - 结构：2段Verse + 1段Chorus + 1段Bridge
-- 注意：歌词中不要出现星座、MBTI、心情这些词，用意象和情感自然表达
+- 注意：歌词中不要出现星座、MBTI、心情这些字眼，用意象和情感自然表达
 - 直接输出歌词和标签，不要其他解释`;
+    }
+
+    const systemMessage = `你是一位顶级华语词人，精通各种音乐风格和知名词人的写作特点。你熟悉方文山的中国风意象与文字游戏、施人诚的都市情感细腻表达、林夕的诗意隐喻、黄伟文的犀利独特、周杰伦歌曲中的节奏韵律感、陶喆的R&B律动等。当用户指定某位歌手或词人的风格时，你会深度还原其标志性的用词、意象、句式和韵脚。`;
 
     const response = await fetch('https://api.minimax.chat/v1/text/chatcompletion_v2', {
       method: 'POST',
@@ -130,7 +132,10 @@ ${toneGuide}${vibeGuide}${styleGuide}曲风：${stylePrompt}${userInput}
       },
       body: JSON.stringify({
         model: 'MiniMax-M2.1',
-        messages: [{ role: 'user', content: lyricsPrompt }],
+        messages: [
+          { role: 'system', content: systemMessage },
+          { role: 'user', content: lyricsPrompt },
+        ],
       }),
     });
 
