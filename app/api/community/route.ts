@@ -70,6 +70,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '内容过长' }, { status: 400 });
     }
 
+    const { data: existing } = await supabase
+      .from('community_songs')
+      .select('id')
+      .eq('title', title)
+      .eq('style', style)
+      .limit(1)
+      .single();
+
+    if (existing) {
+      return NextResponse.json({ error: '这首歌已经在社区里了，不用重复分享哦 🎵' }, { status: 409 });
+    }
+
     let permanentUrl = audioUrl;
     let audioError: string | null = null;
     try {
