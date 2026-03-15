@@ -71,10 +71,12 @@ export async function POST(req: NextRequest) {
     }
 
     let permanentUrl = audioUrl;
+    let audioError: string | null = null;
     try {
       permanentUrl = await persistAudio(audioUrl);
-    } catch {
-      // 音频持久化失败时仍用原始 URL，不阻塞分享
+    } catch (e: any) {
+      audioError = e.message || '未知音频持久化错误';
+      console.error('[community] persistAudio failed:', audioError);
     }
 
     const { data, error } = await supabase
@@ -93,7 +95,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '分享失败，请重试' }, { status: 500 });
     }
 
-    return NextResponse.json({ song: data });
+    return NextResponse.json({
+      song: data,
+      ...(audioError ? { audioWarning: audioError } : {}),
+      audioPersisted: !audioError,
+    });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || '服务器错误' }, { status: 500 });
   }
