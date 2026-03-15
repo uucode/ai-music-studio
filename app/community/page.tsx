@@ -76,12 +76,12 @@ export default function Community() {
             {songs.map(song => {
               const isExpanded = expandedId === song.id;
               return (
-                <div key={song.id}>
+                <div key={song.id} className={`bg-white/10 backdrop-blur-lg rounded-2xl overflow-hidden transition ${
+                  isExpanded ? 'ring-2 ring-pink-400' : ''
+                }`}>
                   <div
                     onClick={() => setExpandedId(isExpanded ? null : song.id)}
-                    className={`bg-white/10 backdrop-blur-lg rounded-2xl p-4 cursor-pointer transition ${
-                      isExpanded ? 'ring-2 ring-pink-400' : 'hover:bg-white/15'
-                    }`}
+                    className="p-4 cursor-pointer hover:bg-white/5 transition"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -99,14 +99,6 @@ export default function Community() {
                       </div>
                     </div>
 
-                    {song.audio_url && (
-                      <div className="mt-4 pt-3 border-t border-white/10">
-                        <audio controls className="w-full" onClick={e => e.stopPropagation()}>
-                          <source src={song.audio_url} type="audio/mpeg" />
-                        </audio>
-                      </div>
-                    )}
-
                     <div className="mt-2 ml-4 flex items-center justify-between">
                       <span className="text-white/30 text-xs">
                         {isExpanded ? '▲ 点击收起' : '▼ 点击查看歌词'}
@@ -119,6 +111,14 @@ export default function Community() {
                       </button>
                     </div>
                   </div>
+
+                  {song.audio_url && (
+                    <div className="px-4 pb-3">
+                      <audio controls className="w-full">
+                        <source src={song.audio_url} type="audio/mpeg" />
+                      </audio>
+                    </div>
+                  )}
 
                   {isExpanded && (
                     <div className="mt-2 bg-black/20 rounded-2xl p-4">

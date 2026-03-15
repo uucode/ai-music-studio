@@ -1,8 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabase } from '../../lib/supabase';
+import { getSupabase, getSupabaseAdmin } from '../../lib/supabase';
 import { checkRateLimit } from '../../lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
+
+const AUDIO_BUCKET = 'audio';
+
+async function persistAudio(audioUrl: string): Promise<string> {
+  const admin = getSupabaseAdmin();
+
+  const res = await fetch(audioUrl);
+  if (!res.ok) throw new Error('音频下载失败');
+
+  const contentType = res.headers.get('content-type') || 'audio/mpeg';
+  const buffer = await res.arrayBuffer();
+
+  const ext = contentType.includes('wav') ? 'wav' : 'mp3';
+  const filename = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
+
+  const { error } = await admin.storage
+    .from(AUDIO_BUCKET)
+    .upload(filename, buffer, { contentType, upsert: false });
+
+  if (error) throw new Error(`音频上传失败: ${error.message}`);
+
+  const { data: urlData } = admin.storage
+    .from(AUDIO_BUCKET)
+    .getPublicUrl(filename);
+
+  return urlData.publicUrl;
+}
 
 export async function GET() {
   try {
@@ -43,12 +70,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '内容过长' }, { status: 400 });
     }
 
+    let permanentUrl = audioUrl;
+    try {
+      permanentUrl = await persistAudio(audioUrl);
+    } catch {
+      // 音频持久化失败时仍用原始 URL，不阻塞分享
+    }
+
     const { data, error } = await supabase
       .from('community_songs')
       .insert({
         title,
         lyrics,
-        audio_url: audioUrl,
+        audio_url: permanentUrl,
         style,
         nickname: nickname || '匿名用户',
       })

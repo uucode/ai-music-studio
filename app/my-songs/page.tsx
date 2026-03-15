@@ -235,20 +235,20 @@ export default function MySongs() {
                       </div>
                     </div>
 
-                    {song.audioUrl && (
-                      <div className="mt-3 pt-3 border-t border-white/10">
-                        <audio controls className="w-full h-10" onClick={e => e.stopPropagation()}>
-                          <source src={song.audioUrl} type="audio/mpeg" />
-                        </audio>
-                      </div>
-                    )}
-
                     <div className="mt-2 ml-4">
                       <span className="text-white/30 text-xs">
                         {isExpanded ? '▲ 点击收起' : '▼ 点击查看歌词'}
                       </span>
                     </div>
                   </div>
+
+                  {song.audioUrl && (
+                    <div className="px-4 pb-3">
+                      <audio controls className="w-full h-10">
+                        <source src={song.audioUrl} type="audio/mpeg" />
+                      </audio>
+                    </div>
+                  )}
 
                   {/* Share nickname input */}
                   {isSharing && (
