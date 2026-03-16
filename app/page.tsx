@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useToast } from './components/Toast';
 import { DonateModal } from './components/DonateModal';
 import { LyricsRenderer } from './components/LyricsRenderer';
+import { isVideoSupported, generateLyricsVideo } from './lib/video-generator';
 import type { MusicStyle, Mood, MBTI, Constellation } from './lib/types';
 
 const MUSIC_STYLES: { name: MusicStyle; desc: string; icon: string }[] = [
@@ -71,6 +72,7 @@ export default function Home() {
   const [generatingStage, setGeneratingStage] = useState<'lyrics' | 'music' | 'done' | null>(null);
   const [audioUrl, setAudioUrl] = useState('');
   const [error, setError] = useState('');
+  const [videoProgress, setVideoProgress] = useState<number | null>(null);
 
   const generate = async () => {
     setGenerating(true);
@@ -185,6 +187,36 @@ export default function Home() {
     setLyrics('');
     setSongTitle('');
     setAudioUrl('');
+  };
+
+  const downloadLyricsVideo = async () => {
+    if (!isVideoSupported()) {
+      toast('你的浏览器不支持视频生成，请使用 Chrome 浏览器', 'error');
+      return;
+    }
+    try {
+      setVideoProgress(0);
+      const blob = await generateLyricsVideo({
+        lyrics,
+        audioUrl,
+        title: songTitle || '未命名',
+        style: selectedStyle,
+        onProgress: (p) => setVideoProgress(p),
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = songTitle ? `《${songTitle}》歌词视频.webm` : '歌词视频.webm';
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast('歌词视频已生成！');
+    } catch (e: any) {
+      toast(e.message || '视频生成失败', 'error');
+    } finally {
+      setVideoProgress(null);
+    }
   };
 
   const downloadSong = async () => {
@@ -491,26 +523,53 @@ export default function Home() {
                 </audio>
 
                 {!showShare ? (
-                  <div className="flex flex-col sm:flex-row justify-center gap-3">
-                    <button
-                      onClick={() => setShowShare(true)}
-                      className="inline-block px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition"
-                    >
-                      📤 分享到社区
-                    </button>
-                    <button
-                      onClick={downloadSong}
-                      className="inline-block px-6 py-2 bg-pink-500 hover:bg-pink-600 rounded-xl transition"
-                    >
-                      ⬇️ 下载歌曲
-                    </button>
-                    <button
-                      onClick={saveLyricsImage}
-                      className="inline-block px-6 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-xl transition"
-                    >
-                      🖼️ 保存歌词
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <button
+                        onClick={() => setShowShare(true)}
+                        className="px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition"
+                      >
+                        📤 分享到社区
+                      </button>
+                      <button
+                        onClick={downloadSong}
+                        className="px-6 py-2 bg-pink-500 hover:bg-pink-600 rounded-xl transition"
+                      >
+                        ⬇️ 下载歌曲
+                      </button>
+                      <button
+                        onClick={saveLyricsImage}
+                        className="px-6 py-2 bg-indigo-500 hover:bg-indigo-600 rounded-xl transition"
+                      >
+                        🖼️ 保存歌词
+                      </button>
+                      <button
+                        onClick={downloadLyricsVideo}
+                        disabled={videoProgress !== null}
+                        className="px-6 py-2 bg-teal-500 hover:bg-teal-600 rounded-xl transition disabled:opacity-50"
+                      >
+                        🎬 歌词视频
+                      </button>
+                    </div>
+                    {videoProgress !== null && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-teal-400 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.round(videoProgress * 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-white/60 w-12 text-right">
+                            {Math.round(videoProgress * 100)}%
+                          </span>
+                        </div>
+                        <p className="text-xs text-white/40 mt-1 text-center">
+                          正在生成歌词视频，请保持页面开启...
+                        </p>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="space-y-3">
                     <input
