@@ -5,7 +5,7 @@ import { useToast } from './components/Toast';
 import { DonateModal } from './components/DonateModal';
 import { LyricsRenderer } from './components/LyricsRenderer';
 import { isVideoSupported, generateLyricsVideo } from './lib/video-generator';
-import { getCreditsInfo, useOneCredit, addCredits } from './lib/credits';
+import { getCreditsInfo, useOneCredit, addCredits, getDeviceId } from './lib/credits';
 import type { MusicStyle, Mood, MBTI, Constellation } from './lib/types';
 
 const MUSIC_STYLES: { name: MusicStyle; desc: string; icon: string }[] = [
@@ -67,6 +67,13 @@ export default function Home() {
   const [showDonate, setShowDonate] = useState(false);
   const [showRecharge, setShowRecharge] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState(0);
+  const [payState, setPayState] = useState<{
+    loading: boolean;
+    orderId?: string;
+    qrUrl?: string;
+    payUrl?: string;
+    polling?: boolean;
+  }>({ loading: false });
 
   const [lyrics, setLyrics] = useState('');
   const [songTitle, setSongTitle] = useState('');
@@ -81,6 +88,74 @@ export default function Home() {
   }, []);
 
   const refreshCredits = () => setCreditsRemaining(getCreditsInfo().remaining);
+
+  const pollingRef = useRef(false);
+
+  const pollOrderStatus = async (orderId: string) => {
+    if (pollingRef.current) return;
+    pollingRef.current = true;
+    setPayState(s => ({ ...s, polling: true }));
+
+    let attempts = 0;
+    while (attempts < 120) {
+      await new Promise(r => setTimeout(r, 3000));
+      try {
+        const res = await fetch(`/api/pay/status?orderId=${orderId}`);
+        const data = await res.json();
+        if (data.status === 'paid') {
+          addCredits(data.credits);
+          refreshCredits();
+          toast(`充值成功！获得 ${data.credits} 次创作机会 🎉`);
+          setPayState({ loading: false });
+          setShowRecharge(false);
+          pollingRef.current = false;
+          return;
+        }
+      } catch { /* retry */ }
+      attempts++;
+    }
+
+    toast('支付超时，如已付款请联系客服', 'error');
+    setPayState({ loading: false });
+    pollingRef.current = false;
+  };
+
+  const handleBuyPackage = async (packageIndex: number) => {
+    setPayState({ loading: true });
+    try {
+      const res = await fetch('/api/pay/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packageIndex, deviceId: getDeviceId() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.error || '创建订单失败', 'error');
+        setPayState({ loading: false });
+        return;
+      }
+      setPayState({
+        loading: false,
+        orderId: data.orderId,
+        qrUrl: data.qrUrl,
+        payUrl: data.payUrl,
+      });
+      pollOrderStatus(data.orderId);
+    } catch {
+      toast('网络错误', 'error');
+      setPayState({ loading: false });
+    }
+  };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paidOrder = params.get('paid');
+    if (paidOrder) {
+      window.history.replaceState({}, '', '/');
+      pollOrderStatus(paidOrder);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const generate = async () => {
     if (!useOneCredit()) {
@@ -656,7 +731,7 @@ export default function Home() {
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} />}
 
       {showRecharge && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowRecharge(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { if (!payState.qrUrl) setShowRecharge(false); }}>
           <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
             <h3 className="text-xl font-bold text-center mb-4">🎵 充值创作次数</h3>
 
@@ -665,38 +740,52 @@ export default function Home() {
               <p className="text-3xl font-bold text-pink-400">{creditsRemaining} <span className="text-base font-normal text-white/50">次</span></p>
             </div>
 
-            <div className="space-y-2 mb-4">
-              <p className="text-sm text-white/70 text-center mb-3">选择套餐，扫码付款后自动到账</p>
-              {[
-                { credits: 10, price: '19.9' },
-                { credits: 20, price: '36.9' },
-              ].map(pkg => (
-                <button
-                  key={pkg.credits}
-                  onClick={() => {
-                    addCredits(pkg.credits);
-                    refreshCredits();
-                    toast(`充值成功！获得 ${pkg.credits} 次创作机会 🎉`);
-                    setShowRecharge(false);
-                  }}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition"
-                >
-                  <span className="font-bold">{pkg.credits} 次创作</span>
-                  <span className="text-pink-400 font-bold">¥{pkg.price}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex justify-center mb-3">
-              <img src="/wechat-pay.jpg" alt="微信收款码" className="w-48 rounded-xl" />
-            </div>
-            <p className="text-xs text-white/40 text-center mb-2">微信扫码付款 → 选择对应套餐 → 次数自动到账</p>
+            {!payState.qrUrl ? (
+              <div className="space-y-2 mb-4">
+                <p className="text-sm text-white/70 text-center mb-3">选择套餐，微信扫码即时到账</p>
+                {[
+                  { credits: 10, price: '19.9', label: '入门' },
+                  { credits: 20, price: '36.9', label: '超值' },
+                ].map((pkg, idx) => (
+                  <button
+                    key={pkg.credits}
+                    onClick={() => handleBuyPackage(idx)}
+                    disabled={payState.loading}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition disabled:opacity-50"
+                  >
+                    <div className="text-left">
+                      <span className="font-bold">{pkg.credits} 次创作</span>
+                      <span className="text-xs text-white/40 ml-2">{pkg.label}</span>
+                    </div>
+                    <span className="text-pink-400 font-bold">¥{pkg.price}</span>
+                  </button>
+                ))}
+                {payState.loading && (
+                  <p className="text-center text-sm text-white/50 animate-pulse mt-2">正在创建订单...</p>
+                )}
+              </div>
+            ) : (
+              <div className="text-center mb-4">
+                <p className="text-sm text-white/70 mb-3">微信扫码支付</p>
+                <div className="flex justify-center mb-3">
+                  <img src={payState.qrUrl} alt="支付二维码" className="w-52 h-52 rounded-xl bg-white p-1" />
+                </div>
+                {payState.polling && (
+                  <p className="text-sm text-pink-300 animate-pulse">等待支付确认中...</p>
+                )}
+                <p className="text-xs text-white/40 mt-2">支付完成后自动到账，无需其他操作</p>
+              </div>
+            )}
 
             <button
-              onClick={() => setShowRecharge(false)}
+              onClick={() => {
+                pollingRef.current = false;
+                setPayState({ loading: false });
+                setShowRecharge(false);
+              }}
               className="w-full mt-2 py-2 text-sm text-white/40 hover:text-white/60"
             >
-              关闭
+              {payState.qrUrl ? '取消支付' : '关闭'}
             </button>
           </div>
         </div>
