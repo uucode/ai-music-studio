@@ -206,7 +206,7 @@ export default function Home() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = songTitle ? `《${songTitle}》歌词视频.webm` : '歌词视频.webm';
+      a.download = songTitle ? `《${songTitle}》歌词视频.mp4` : '歌词视频.mp4';
       document.body.appendChild(a);
       a.click();
       URL.revokeObjectURL(url);
