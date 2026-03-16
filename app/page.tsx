@@ -73,6 +73,11 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState('');
   const [error, setError] = useState('');
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
+  const [canMakeVideo, setCanMakeVideo] = useState(false);
+
+  useEffect(() => {
+    setCanMakeVideo(isVideoSupported());
+  }, []);
 
   const generate = async () => {
     setGenerating(true);
@@ -306,19 +311,20 @@ export default function Home() {
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 409) {
+        toast('这首歌已经在社区里了 🎵');
+        setShowShare(false);
+        setHasShared(true);
+        return;
+      }
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         throw new Error(data.error || '分享失败');
       }
 
-      const shareLink = `${window.location.origin}/community`;
-      try {
-        await navigator.clipboard.writeText(shareLink);
-        toast('已分享到社区！链接已复制到剪贴板');
-      } catch {
-        toast('已分享到社区！');
-      }
-
+      toast('已分享到社区！🎉');
       setShowShare(false);
       setNickname('');
       setHasShared(true);
@@ -543,13 +549,15 @@ export default function Home() {
                       >
                         🖼️ 保存歌词
                       </button>
-                      <button
-                        onClick={downloadLyricsVideo}
-                        disabled={videoProgress !== null}
-                        className="px-6 py-2 bg-teal-500 hover:bg-teal-600 rounded-xl transition disabled:opacity-50"
-                      >
-                        🎬 歌词视频
-                      </button>
+                      {canMakeVideo && (
+                        <button
+                          onClick={downloadLyricsVideo}
+                          disabled={videoProgress !== null}
+                          className="px-6 py-2 bg-teal-500 hover:bg-teal-600 rounded-xl transition disabled:opacity-50"
+                        >
+                          🎬 歌词视频
+                        </button>
+                      )}
                     </div>
                     {videoProgress !== null && (
                       <div className="mt-3">
