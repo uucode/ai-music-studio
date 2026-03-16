@@ -37,6 +37,7 @@ export default function MySongs() {
   const [showDonate, setShowDonate] = useState(false);
   const [nicknameInput, setNicknameInput] = useState('');
   const [sharingIndex, setSharingIndex] = useState<number | null>(null);
+  const [sharingBusy, setSharingBusy] = useState(false);
 
   useEffect(() => {
     const loaded: MusicSong[] = JSON.parse(localStorage.getItem('mySongs') || '[]');
@@ -56,6 +57,8 @@ export default function MySongs() {
   };
 
   const shareToCommunity = async (song: MusicSong, nickname: string) => {
+    if (sharingBusy) return;
+    setSharingBusy(true);
     try {
       const res = await fetch('/api/community', {
         method: 'POST',
@@ -86,6 +89,7 @@ export default function MySongs() {
     }
     setSharingIndex(null);
     setNicknameInput('');
+    setSharingBusy(false);
   };
 
   const copyLyrics = async (lyrics: string) => {
@@ -268,9 +272,10 @@ export default function MySongs() {
                       />
                       <button
                         onClick={() => shareToCommunity(song, nicknameInput)}
-                        className="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm transition"
+                        disabled={sharingBusy}
+                        className="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm transition disabled:opacity-50"
                       >
-                        确认分享
+                        {sharingBusy ? '分享中...' : '确认分享'}
                       </button>
                       <button
                         onClick={() => { setSharingIndex(null); setNicknameInput(''); }}

@@ -292,7 +292,11 @@ export default function Home() {
     }
   };
 
+  const [sharing, setSharing] = useState(false);
+
   const handleShare = async () => {
+    if (sharing) return;
+    setSharing(true);
     try {
       const res = await fetch('/api/community', {
         method: 'POST',
@@ -325,6 +329,8 @@ export default function Home() {
       setHasShared(true);
     } catch (err: any) {
       toast(err.message || '分享失败，请重试', 'error');
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -589,9 +595,10 @@ export default function Home() {
                       </button>
                       <button
                         onClick={handleShare}
-                        className="inline-block px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition"
+                        disabled={sharing}
+                        className="inline-block px-6 py-2 bg-purple-500 hover:bg-purple-600 rounded-xl transition disabled:opacity-50"
                       >
-                        ✓ 确认分享
+                        {sharing ? '分享中...' : '✓ 确认分享'}
                       </button>
                     </div>
                   </div>
