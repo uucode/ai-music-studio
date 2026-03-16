@@ -5,6 +5,7 @@ import { useToast } from './components/Toast';
 import { DonateModal } from './components/DonateModal';
 import { LyricsRenderer } from './components/LyricsRenderer';
 import { isVideoSupported, generateLyricsVideo } from './lib/video-generator';
+import { getCreditsInfo, useOneCredit, addCredits, getDeviceId } from './lib/credits';
 import type { MusicStyle, Mood, MBTI, Constellation } from './lib/types';
 
 const MUSIC_STYLES: { name: MusicStyle; desc: string; icon: string }[] = [
@@ -64,7 +65,10 @@ export default function Home() {
   const [showShare, setShowShare] = useState(false);
   const [hasShared, setHasShared] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
-
+  const [showRecharge, setShowRecharge] = useState(false);
+  const [redeemCode, setRedeemCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
+  const [creditsRemaining, setCreditsRemaining] = useState(0);
 
   const [lyrics, setLyrics] = useState('');
   const [songTitle, setSongTitle] = useState('');
@@ -74,7 +78,45 @@ export default function Home() {
   const [error, setError] = useState('');
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
 
+  useEffect(() => {
+    setCreditsRemaining(getCreditsInfo().remaining);
+  }, []);
+
+  const refreshCredits = () => setCreditsRemaining(getCreditsInfo().remaining);
+
+  const handleRedeem = async () => {
+    if (redeeming || !redeemCode.trim()) return;
+    setRedeeming(true);
+    try {
+      const res = await fetch('/api/redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: redeemCode.trim(), deviceId: getDeviceId() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        addCredits(data.credits);
+        refreshCredits();
+        toast(data.message || '兑换成功！');
+        setRedeemCode('');
+        setShowRecharge(false);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error || '兑换失败', 'error');
+      }
+    } catch {
+      toast('网络错误，请重试', 'error');
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
   const generate = async () => {
+    if (!useOneCredit()) {
+      setShowRecharge(true);
+      return;
+    }
+    refreshCredits();
     setGenerating(true);
     generatingRef.current = true;
     setGeneratingStage('lyrics');
@@ -478,6 +520,17 @@ export default function Home() {
             )}
 
             {/* Generate Button */}
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-sm text-white/50">
+                剩余创作次数：<span className={`font-bold ${creditsRemaining > 0 ? 'text-green-400' : 'text-red-400'}`}>{creditsRemaining}</span>
+              </span>
+              <button
+                onClick={() => setShowRecharge(true)}
+                className="text-sm text-pink-300 hover:text-pink-200 underline"
+              >
+                充值
+              </button>
+            </div>
             <button
               onClick={generate}
               disabled={generating}
@@ -493,7 +546,7 @@ export default function Home() {
                   )}
                 </span>
               ) : (
-                '🎵 开始创作'
+                creditsRemaining > 0 ? '🎵 开始创作' : '🔒 次数已用完，请充值'
               )}
             </button>
 
@@ -630,6 +683,57 @@ export default function Home() {
       </div>
 
       {showDonate && <DonateModal onClose={() => setShowDonate(false)} />}
+
+      {showRecharge && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowRecharge(false)}>
+          <div className="bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 rounded-3xl p-6 max-w-sm w-full shadow-2xl border border-white/10" onClick={e => e.stopPropagation()}>
+            <h3 className="text-xl font-bold text-center mb-4">🎵 充值创作次数</h3>
+
+            <div className="bg-white/10 rounded-2xl p-4 mb-4 text-center">
+              <p className="text-sm text-white/60 mb-1">当前剩余</p>
+              <p className="text-3xl font-bold text-pink-400">{creditsRemaining} <span className="text-base font-normal text-white/50">次</span></p>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <p className="text-sm text-white/70 text-center">扫码付款后，联系管理员获取兑换码</p>
+              <div className="flex justify-center">
+                <div className="bg-white rounded-xl p-2 w-40 h-40 flex items-center justify-center text-black text-xs">
+                  收款二维码
+                </div>
+              </div>
+              <p className="text-xs text-white/40 text-center">10 次 / ¥9.9 · 50 次 / ¥39.9 · 不限次 / ¥99.9</p>
+            </div>
+
+            <div className="border-t border-white/10 pt-4">
+              <p className="text-sm text-white/70 mb-2 text-center">已有兑换码？</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={redeemCode}
+                  onChange={e => setRedeemCode(e.target.value)}
+                  placeholder="输入兑换码"
+                  className="flex-1 px-4 py-2 bg-white/10 rounded-xl text-sm placeholder-white/40 outline-none focus:ring-2 focus:ring-pink-400"
+                  onKeyDown={e => e.key === 'Enter' && handleRedeem()}
+                />
+                <button
+                  onClick={handleRedeem}
+                  disabled={redeeming || !redeemCode.trim()}
+                  className="px-4 py-2 bg-pink-500 hover:bg-pink-600 rounded-xl text-sm transition disabled:opacity-50"
+                >
+                  {redeeming ? '...' : '兑换'}
+                </button>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowRecharge(false)}
+              className="w-full mt-4 py-2 text-sm text-white/40 hover:text-white/60"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
