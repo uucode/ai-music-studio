@@ -191,7 +191,7 @@ export default function Home() {
 
   const downloadLyricsVideo = async () => {
     if (!isVideoSupported()) {
-      toast('你的浏览器不支持视频生成，请使用 Chrome 浏览器', 'error');
+      toast('你的浏览器不支持视频生成，请在电脑端使用 Chrome 浏览器', 'error');
       return;
     }
     try {

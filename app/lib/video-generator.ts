@@ -1,7 +1,5 @@
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 
-const WIDTH = 1080;
-const HEIGHT = 1920;
 const FPS = 30;
 
 interface VideoOptions {
@@ -10,6 +8,10 @@ interface VideoOptions {
   title: string;
   style: string;
   onProgress?: (progress: number) => void;
+}
+
+function isMobile(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
 export function isVideoSupported(): boolean {
@@ -23,8 +25,12 @@ export async function generateLyricsVideo(opts: VideoOptions): Promise<Blob> {
   const { lyrics, audioUrl, title, style, onProgress } = opts;
 
   if (!isVideoSupported()) {
-    throw new Error('浏览器不支持视频编码，请使用最新版 Chrome');
+    throw new Error('浏览器不支持视频编码，请在电脑端使用 Chrome 浏览器');
   }
+
+  const mobile = isMobile();
+  const W = mobile ? 540 : 1080;
+  const H = mobile ? 960 : 1920;
 
   onProgress?.(0);
 
@@ -39,38 +45,42 @@ export async function generateLyricsVideo(opts: VideoOptions): Promise<Blob> {
   const numberOfChannels = decoded.numberOfChannels;
 
   const canvas = document.createElement('canvas');
-  canvas.width = WIDTH;
-  canvas.height = HEIGHT;
+  canvas.width = W;
+  canvas.height = H;
   const ctx = canvas.getContext('2d')!;
   const lines = lyrics.split('\n');
 
   const audioCodec = await pickAudioCodec(numberOfChannels, sampleRate);
   const muxerAudioCodec = audioCodec.startsWith('mp4a') ? 'aac' as const : 'opus' as const;
 
+  let encoderError: Error | null = null;
+
   const target = new ArrayBufferTarget();
   const muxer = new Muxer({
     target,
-    video: { codec: 'avc', width: WIDTH, height: HEIGHT },
+    video: { codec: 'avc', width: W, height: H },
     audio: { codec: muxerAudioCodec, numberOfChannels, sampleRate },
     fastStart: 'in-memory',
   });
 
   const videoEncoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
-    error: (e) => { throw e; },
+    error: (e) => { encoderError = e instanceof Error ? e : new Error(String(e)); },
   });
 
+  const videoBitrate = mobile ? 1_500_000 : 4_000_000;
+
   videoEncoder.configure({
-    codec: 'avc1.640028',
-    width: WIDTH,
-    height: HEIGHT,
-    bitrate: 4_000_000,
+    codec: 'avc1.42001f',
+    width: W,
+    height: H,
+    bitrate: videoBitrate,
     framerate: FPS,
   });
 
   const audioEncoder = new AudioEncoder({
     output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
-    error: (e) => { throw e; },
+    error: (e) => { encoderError = e instanceof Error ? e : new Error(String(e)); },
   });
 
   audioEncoder.configure({
@@ -81,10 +91,13 @@ export async function generateLyricsVideo(opts: VideoOptions): Promise<Blob> {
   });
 
   const totalFrames = Math.ceil(duration * FPS);
+  const scale = W / 1080;
 
   for (let i = 0; i < totalFrames; i++) {
+    if (encoderError) throw encoderError;
+
     const progress = i / totalFrames;
-    drawFrame(ctx, lines, progress, title, style);
+    drawFrame(ctx, lines, progress, title, style, W, H, scale);
 
     const frame = new VideoFrame(canvas, {
       timestamp: Math.round((i / FPS) * 1_000_000),
@@ -99,6 +112,7 @@ export async function generateLyricsVideo(opts: VideoOptions): Promise<Blob> {
     }
   }
 
+  if (encoderError) throw encoderError;
   onProgress?.(0.8);
 
   const chunkSamples = sampleRate;
@@ -128,6 +142,9 @@ export async function generateLyricsVideo(opts: VideoOptions): Promise<Blob> {
 
   await videoEncoder.flush();
   await audioEncoder.flush();
+
+  if (encoderError) throw encoderError;
+
   videoEncoder.close();
   audioEncoder.close();
 
@@ -161,9 +178,10 @@ function drawFrame(
   progress: number,
   title: string,
   style: string,
+  W: number,
+  H: number,
+  scale: number,
 ) {
-  const { width: W, height: H } = ctx.canvas;
-
   const grad = ctx.createLinearGradient(0, 0, W, H);
   grad.addColorStop(0, '#1e1b4b');
   grad.addColorStop(0.5, '#581c87');
@@ -175,31 +193,32 @@ function drawFrame(
 
   ctx.textAlign = 'center';
   ctx.shadowColor = 'rgba(236,72,153,0.6)';
-  ctx.shadowBlur = 20;
+  ctx.shadowBlur = 20 * scale;
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 56px sans-serif';
-  ctx.fillText(`《${title}》`, W / 2, 160, W - 80);
+  ctx.font = `bold ${Math.round(56 * scale)}px sans-serif`;
+  ctx.fillText(`《${title}》`, W / 2, Math.round(160 * scale), W - Math.round(80 * scale));
   ctx.shadowBlur = 0;
 
-  ctx.font = '32px sans-serif';
+  ctx.font = `${Math.round(32 * scale)}px sans-serif`;
   ctx.fillStyle = 'rgba(236,72,153,0.8)';
-  ctx.fillText(style, W / 2, 220);
+  ctx.fillText(style, W / 2, Math.round(220 * scale));
 
-  const lineH = 72;
-  const fontSize = 42;
+  const lineH = Math.round(72 * scale);
+  const fontSize = Math.round(42 * scale);
   const totalH = lines.length * lineH;
   const scrollRange = totalH + H * 0.3;
   const scrollOffset = progress * scrollRange;
   const centerY = H * 0.5;
+  const clipTop = Math.round(280 * scale);
 
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, 280, W, H - 380);
+  ctx.rect(0, clipTop, W, H - clipTop - Math.round(100 * scale));
   ctx.clip();
 
   lines.forEach((line, i) => {
     const y = H * 0.75 + i * lineH - scrollOffset;
-    if (y < 200 || y > H - 80) return;
+    if (y < clipTop - lineH || y > H) return;
 
     const dist = Math.abs(y - centerY);
     const maxDist = H * 0.35;
@@ -208,28 +227,28 @@ function drawFrame(
     const isHeader = /^[【\[]/.test(line);
     if (isHeader) {
       ctx.fillStyle = `rgba(236,72,153,${alpha * 0.9})`;
-      ctx.font = 'bold 36px sans-serif';
+      ctx.font = `bold ${Math.round(36 * scale)}px sans-serif`;
     } else {
       ctx.fillStyle = `rgba(255,255,255,${alpha})`;
       ctx.font = `${fontSize}px sans-serif`;
     }
 
     ctx.textAlign = 'center';
-    ctx.fillText(line, W / 2, y, W - 100);
+    ctx.fillText(line, W / 2, y, W - Math.round(100 * scale));
   });
 
   ctx.restore();
 
-  const barY = H - 90;
+  const barY = H - Math.round(90 * scale);
   ctx.fillStyle = 'rgba(255,255,255,0.15)';
-  ctx.fillRect(W * 0.1, barY, W * 0.8, 4);
+  ctx.fillRect(W * 0.1, barY, W * 0.8, Math.round(4 * scale));
   ctx.fillStyle = 'rgba(236,72,153,0.8)';
-  ctx.fillRect(W * 0.1, barY, W * 0.8 * progress, 4);
+  ctx.fillRect(W * 0.1, barY, W * 0.8 * progress, Math.round(4 * scale));
 
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
-  ctx.font = '24px sans-serif';
+  ctx.font = `${Math.round(24 * scale)}px sans-serif`;
   ctx.textAlign = 'center';
-  ctx.fillText('随心音乐 AI-Music-Studio ✨', W / 2, H - 50);
+  ctx.fillText('随心音乐 AI-Music-Studio ✨', W / 2, H - Math.round(50 * scale));
 }
 
 function drawStars(
