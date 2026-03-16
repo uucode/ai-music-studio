@@ -72,18 +72,14 @@ export default function MySongs() {
         }),
       });
 
-      const data = await res.json().catch(() => ({}));
-
-      if (res.status === 409) {
+      if (res.ok) {
+        toast('已分享到社区！🎉');
+      } else if (res.status === 409) {
         toast('这首歌已经在社区里了 🎵');
-        return;
+      } else {
+        const data = await res.json().catch(() => ({}));
+        toast(data.error || '分享失败，请重试', 'error');
       }
-
-      if (!res.ok) {
-        throw new Error(data.error || '分享失败');
-      }
-
-      toast('已分享到社区！🎉');
     } catch (err: any) {
       toast(err.message || '分享失败，请重试', 'error');
     }

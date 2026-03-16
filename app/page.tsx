@@ -310,7 +310,13 @@ export default function Home() {
         }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast('已分享到社区！🎉');
+        setShowShare(false);
+        setNickname('');
+        setHasShared(true);
+        return;
+      }
 
       if (res.status === 409) {
         toast('这首歌已经在社区里了 🎵');
@@ -319,14 +325,8 @@ export default function Home() {
         return;
       }
 
-      if (!res.ok) {
-        throw new Error(data.error || '分享失败');
-      }
-
-      toast('已分享到社区！🎉');
-      setShowShare(false);
-      setNickname('');
-      setHasShared(true);
+      const data = await res.json().catch(() => ({}));
+      toast(data.error || '分享失败，请重试', 'error');
     } catch (err: any) {
       toast(err.message || '分享失败，请重试', 'error');
     } finally {
