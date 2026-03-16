@@ -158,11 +158,9 @@ export default function Home() {
   }, []);
 
   const generate = async () => {
-    if (!useOneCredit()) {
-      setShowRecharge(true);
-      return;
-    }
-    refreshCredits();
+    // TODO: 虎皮椒配好后恢复积分检查
+    // if (!useOneCredit()) { setShowRecharge(true); return; }
+    // refreshCredits();
     setGenerating(true);
     generatingRef.current = true;
     setGeneratingStage('lyrics');
@@ -566,6 +564,7 @@ export default function Home() {
             )}
 
             {/* Generate Button */}
+            {/* TODO: 虎皮椒配好后恢复充值入口
             <div className="flex items-center justify-between mb-2 px-1">
               <span className="text-sm text-white/50">
                 剩余创作次数：<span className={`font-bold ${creditsRemaining > 0 ? 'text-green-400' : 'text-red-400'}`}>{creditsRemaining}</span>
@@ -577,6 +576,7 @@ export default function Home() {
                 充值
               </button>
             </div>
+            */}
             <button
               onClick={generate}
               disabled={generating}
@@ -592,7 +592,7 @@ export default function Home() {
                   )}
                 </span>
               ) : (
-                creditsRemaining > 0 ? '🎵 开始创作' : '🔒 次数已用完，请充值'
+                '🎵 开始创作'
               )}
             </button>
 
