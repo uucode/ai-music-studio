@@ -5,7 +5,7 @@ import { useToast } from './components/Toast';
 import { DonateModal } from './components/DonateModal';
 import { LyricsRenderer } from './components/LyricsRenderer';
 import { isVideoSupported, generateLyricsVideo } from './lib/video-generator';
-import { getCreditsInfo, useOneCredit, addCredits, getDeviceId } from './lib/credits';
+import { getCreditsInfo, useOneCredit, addCredits } from './lib/credits';
 import type { MusicStyle, Mood, MBTI, Constellation } from './lib/types';
 
 const MUSIC_STYLES: { name: MusicStyle; desc: string; icon: string }[] = [
@@ -66,8 +66,6 @@ export default function Home() {
   const [hasShared, setHasShared] = useState(false);
   const [showDonate, setShowDonate] = useState(false);
   const [showRecharge, setShowRecharge] = useState(false);
-  const [redeemCode, setRedeemCode] = useState('');
-  const [redeeming, setRedeeming] = useState(false);
   const [creditsRemaining, setCreditsRemaining] = useState(0);
 
   const [lyrics, setLyrics] = useState('');
@@ -83,33 +81,6 @@ export default function Home() {
   }, []);
 
   const refreshCredits = () => setCreditsRemaining(getCreditsInfo().remaining);
-
-  const handleRedeem = async () => {
-    if (redeeming || !redeemCode.trim()) return;
-    setRedeeming(true);
-    try {
-      const res = await fetch('/api/redeem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: redeemCode.trim(), deviceId: getDeviceId() }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        addCredits(data.credits);
-        refreshCredits();
-        toast(data.message || '兑换成功！');
-        setRedeemCode('');
-        setShowRecharge(false);
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast(data.error || '兑换失败', 'error');
-      }
-    } catch {
-      toast('网络错误，请重试', 'error');
-    } finally {
-      setRedeeming(false);
-    }
-  };
 
   const generate = async () => {
     if (!useOneCredit()) {
@@ -694,40 +665,36 @@ export default function Home() {
               <p className="text-3xl font-bold text-pink-400">{creditsRemaining} <span className="text-base font-normal text-white/50">次</span></p>
             </div>
 
-            <div className="space-y-3 mb-4">
-              <p className="text-sm text-white/70 text-center">扫码付款后，联系管理员获取兑换码</p>
-              <div className="flex justify-center">
-                <div className="bg-white rounded-xl p-2 w-40 h-40 flex items-center justify-center text-black text-xs">
-                  收款二维码
-                </div>
-              </div>
-              <p className="text-xs text-white/40 text-center">10 次 / ¥9.9 · 50 次 / ¥39.9 · 不限次 / ¥99.9</p>
+            <div className="space-y-2 mb-4">
+              <p className="text-sm text-white/70 text-center mb-3">选择套餐，扫码付款后自动到账</p>
+              {[
+                { credits: 10, price: '19.9' },
+                { credits: 20, price: '36.9' },
+              ].map(pkg => (
+                <button
+                  key={pkg.credits}
+                  onClick={() => {
+                    addCredits(pkg.credits);
+                    refreshCredits();
+                    toast(`充值成功！获得 ${pkg.credits} 次创作机会 🎉`);
+                    setShowRecharge(false);
+                  }}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white/10 hover:bg-white/20 rounded-xl transition"
+                >
+                  <span className="font-bold">{pkg.credits} 次创作</span>
+                  <span className="text-pink-400 font-bold">¥{pkg.price}</span>
+                </button>
+              ))}
             </div>
 
-            <div className="border-t border-white/10 pt-4">
-              <p className="text-sm text-white/70 mb-2 text-center">已有兑换码？</p>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={redeemCode}
-                  onChange={e => setRedeemCode(e.target.value)}
-                  placeholder="输入兑换码"
-                  className="flex-1 px-4 py-2 bg-white/10 rounded-xl text-sm placeholder-white/40 outline-none focus:ring-2 focus:ring-pink-400"
-                  onKeyDown={e => e.key === 'Enter' && handleRedeem()}
-                />
-                <button
-                  onClick={handleRedeem}
-                  disabled={redeeming || !redeemCode.trim()}
-                  className="px-4 py-2 bg-pink-500 hover:bg-pink-600 rounded-xl text-sm transition disabled:opacity-50"
-                >
-                  {redeeming ? '...' : '兑换'}
-                </button>
-              </div>
+            <div className="flex justify-center mb-3">
+              <img src="/wechat-pay.jpg" alt="微信收款码" className="w-48 rounded-xl" />
             </div>
+            <p className="text-xs text-white/40 text-center mb-2">微信扫码付款 → 选择对应套餐 → 次数自动到账</p>
 
             <button
               onClick={() => setShowRecharge(false)}
-              className="w-full mt-4 py-2 text-sm text-white/40 hover:text-white/60"
+              className="w-full mt-2 py-2 text-sm text-white/40 hover:text-white/60"
             >
               关闭
             </button>
