@@ -73,11 +73,6 @@ export default function Home() {
   const [audioUrl, setAudioUrl] = useState('');
   const [error, setError] = useState('');
   const [videoProgress, setVideoProgress] = useState<number | null>(null);
-  const [canMakeVideo, setCanMakeVideo] = useState(false);
-
-  useEffect(() => {
-    setCanMakeVideo(isVideoSupported());
-  }, []);
 
   const generate = async () => {
     setGenerating(true);
@@ -196,7 +191,7 @@ export default function Home() {
 
   const downloadLyricsVideo = async () => {
     if (!isVideoSupported()) {
-      toast('你的浏览器不支持视频生成，请在电脑端使用 Chrome 浏览器', 'error');
+      toast('歌词视频功能请在电脑端 Chrome 浏览器中使用', 'info');
       return;
     }
     try {
@@ -549,15 +544,13 @@ export default function Home() {
                       >
                         🖼️ 保存歌词
                       </button>
-                      {canMakeVideo && (
-                        <button
-                          onClick={downloadLyricsVideo}
-                          disabled={videoProgress !== null}
-                          className="px-6 py-2 bg-teal-500 hover:bg-teal-600 rounded-xl transition disabled:opacity-50"
-                        >
-                          🎬 歌词视频
-                        </button>
-                      )}
+                      <button
+                        onClick={downloadLyricsVideo}
+                        disabled={videoProgress !== null}
+                        className="px-6 py-2 bg-teal-500 hover:bg-teal-600 rounded-xl transition disabled:opacity-50"
+                      >
+                        🎬 歌词视频
+                      </button>
                     </div>
                     {videoProgress !== null && (
                       <div className="mt-3">
