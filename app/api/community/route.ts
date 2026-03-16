@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       .eq('title', title)
       .eq('style', style)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       return NextResponse.json({ error: '这首歌已经在社区里了，不用重复分享哦 🎵' }, { status: 409 });
