@@ -69,6 +69,29 @@ const STYLE_PROMPTS: Record<string, string> = {
 
 const MAX_PROMPT_LENGTH = 2000;
 
+const CREATIVE_SEEDS = [
+  '以一个具体的时间和地点开头，比如凌晨、黄昏、车站、天台、便利店',
+  '用一段关系中的某个瞬间（初遇、分手、重逢、沉默）展开叙事',
+  '以季节变化作为暗线，融入当季独有的感官细节',
+  '聚焦一件小物品（钥匙、旧照片、耳机、信纸、车票），以小见大',
+  '用旅途作为线索，城市与城市之间的故事',
+  '写一封没寄出去的信，或者一通没拨出去的电话',
+  '以梦境和现实的切换来推进叙事',
+  '选一种天气（暴雨、初雪、大雾、烈日）作为情绪底色',
+  '以某首歌、某部电影或某本书作为故事的引子',
+  '写两个人之间说不出口的话，用动作和场景代替直白表达',
+  '以深夜独处的场景展开内心独白',
+  '用食物或味道串联起记忆的画面',
+  '围绕一个承诺或约定展开故事',
+  '描述从一座城市搬到另一座城市后的心境变化',
+  '以一场意外的重逢为核心写故事',
+  '用四季对应感情的不同阶段',
+  '写关于成长和告别的主题，但用具体的人和事代替抽象感慨',
+  '以一段公路旅行为背景，窗外的风景对应内心变化',
+  '围绕一个秘密或不为人知的心事展开',
+  '用倒叙手法，从结局开始讲故事',
+];
+
 export async function POST(req: NextRequest) {
   try {
     if (!API_KEY) {
@@ -120,8 +143,10 @@ ${contextLine}
 - 注意：歌词中不要出现星座、MBTI、心情这些字眼，用意象和情感自然表达
 - 直接输出歌名和歌词，不要其他解释`;
     } else {
+      const seed = CREATIVE_SEEDS[Math.floor(Math.random() * CREATIVE_SEEDS.length)];
       lyricsPrompt = `创作一首${stylePrompt}风格的歌词。
 
+创意方向：${seed}
 ${contextLine}
 要求：
 - 语言：默认中文
@@ -153,6 +178,7 @@ ${contextLine}
       },
       body: JSON.stringify({
         model: 'MiniMax-M2.5',
+        temperature: 0.9,
         messages: [
           { role: 'system', content: systemMessage },
           { role: 'user', content: lyricsPrompt },
