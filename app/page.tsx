@@ -190,7 +190,7 @@ export default function Home() {
   };
 
   const downloadLyricsVideo = async () => {
-    if (!isVideoSupported()) {
+    if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || !isVideoSupported()) {
       toast('歌词视频功能请在电脑端 Chrome 浏览器中使用', 'info');
       return;
     }
